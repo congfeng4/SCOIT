@@ -15,7 +15,7 @@ setup(
     description='SCOIT is an implementation of a probabilistic tensor decomposition framework for single-cell multi-omics data integration.',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    install_requires=['numpy', 'torch==1.9.0', 'scipy==1.6.0', 'scikit-learn==0.24.2'],
+    install_requires=['numpy', 'torch', 'scipy', 'scikit-learn'],
     classifiers=[
         "Programming Language :: Python :: 3",
 		"License :: OSI Approved :: MIT License",

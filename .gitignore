@@ -1,0 +1,10 @@
+.DS_Store
+*.pyc
+*.egg-info/
+ashic/examples/
+*.py.bak
+.idea
+logs
+/result
+*.egg-info
+/data

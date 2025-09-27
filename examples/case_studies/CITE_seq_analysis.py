@@ -5,7 +5,7 @@ import time
 
 def load_data():
     expression_data = np.array(pd.read_csv("data/CITE_seq/expression_data.csv", index_col=0))
-    idx = np.argwhere(np.count_nonzero(expression_data, axis=0) <862)
+    idx = np.argwhere(np.count_nonzero(expression_data, axis=0) < 862)
     expression_data = np.delete(expression_data, idx, axis=1)
     expression_data = np.log(expression_data+1)
 
