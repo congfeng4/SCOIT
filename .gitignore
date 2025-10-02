@@ -8,3 +8,4 @@ logs
 /result
 *.egg-info
 /data
+*.png
