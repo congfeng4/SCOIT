@@ -21,7 +21,7 @@ def load_data():
             labels.append(4)
         if each == "ES":
             labels.append(5)
-                       
+
     return expression_data, methylation_data, labels
 
 
@@ -34,8 +34,8 @@ if __name__ == "__main__":
     print(data.shape)
 
     sc_model = sc_multi_omics()
-    predict_data = sc_model.fit(data, dist="negative_bionomial", n_epochs=1000, device="cpu")
-    
+    predict_data = sc_model.fit(data, dist="negative_bionomial", n_epochs=1000, device=0)
+
     np.savetxt("cell_embeddings.csv", sc_model.C, delimiter = ',')
     np.savetxt("gene_embeddings.csv", sc_model.G, delimiter = ',')
     np.savetxt("omics_embeddings.csv", sc_model.O, delimiter = ',')
