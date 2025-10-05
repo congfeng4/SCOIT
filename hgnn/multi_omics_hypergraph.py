@@ -31,7 +31,8 @@ class MultiOmicsHypergraph:
         self.data = data
         self.num_cells = data[0].shape[0]
         self.num_omics = len(data)
-        self.num_genes = sum(x.shape[1] for x in data) # Union of features.
+        self.omics_dims = [x.shape[1] for x in data]
+        self.num_genes = sum(self.omics_dims) # Union of features.
 
         self.num_nodes = sum([self.num_cells, self.num_genes, self.num_omics])
         self.num_edges = sum(np.count_nonzero(x) for x in data)
@@ -91,6 +92,7 @@ class MultiOmicsHypergraph:
                                  name=node_name)
 
     def edges(self, return_dict=False):
+        genes_offset = self.genes_offset
         for omics_id in range(self.num_omics):
             omics_node = omics_id + self.omics_offset
             feature_matrix = self.data[omics_id]
@@ -98,11 +100,12 @@ class MultiOmicsHypergraph:
                 weight = feature_matrix[row, col]
                 # Row is cell id, col is gene id. Convert to node id
                 cell_node = row + self.cells_offset
-                gene_node = col + self.genes_offset
+                gene_node = col + genes_offset
                 if return_dict:
                     yield dict(omics_node=omics_node, cell_node=cell_node, gene_node=gene_node, weight=weight)
                 else:
                     yield omics_node, cell_node, gene_node, weight
+            genes_offset += feature_matrix.shape[1]
 
     def edges_dataframe(self):
         return pd.DataFrame.from_records(self.edges(return_dict=True))
@@ -112,7 +115,8 @@ class MultiOmicsHypergraph:
         import hypernetx as hnx
 
         hg = hnx.Hypergraph([e[:-1] for e in self.edges()])
-
+        assert self.num_nodes == hg.number_of_nodes(), (self.num_nodes, hg.number_of_nodes())
+        assert self.num_edges == hg.number_of_edges(), (self.num_edges, hg.number_of_edges())
         return hg
 
 
@@ -124,7 +128,10 @@ if __name__ == '__main__':
     mohg = MultiOmicsHypergraph(data)
     print(mohg)
     print(mohg.edge_rate)
+    print(f'{mohg.omics_dims}')
 
+    df = mohg.edges_dataframe()
+    df.to_csv('./mohg.csv', index=False)
     hg = mohg.to_hypernetx_graph()
     # print(hg)
     hg.add
