@@ -17,8 +17,7 @@ def process_data(multi_omics_data: dict[str, Path], cell_key: str, dataname: str
 
     num_omics = len(multi_omics_data)
     print('Begin to load multi omics data', multi_omics_data)
-    if not read_csv_args:
-        read_csv_args = dict(index_col=cell_key)
+    read_csv_args.update(index_col=cell_key)
 
     begin = time.time()
     multi_omics_df = {
@@ -78,7 +77,7 @@ def process_data(multi_omics_data: dict[str, Path], cell_key: str, dataname: str
                             Cell=cell_node, Weight=weight)
                 hyper_edges.append(edge)
 
-        df_edges =  pd.DataFrame.from_records(hyper_edges).astype(int)
+        df_edges =  pd.DataFrame.from_records(hyper_edges)
         return df_edges
 
     def construct_hyper_edge_fast():
@@ -184,7 +183,7 @@ def load_graph(dir_path: Path):
     with open(dir_path / 'metadata.json', 'r') as f:
         metadata = json.load(f)
     begin = time.time()
-    df_edges = pd.read_csv(dir_path / 'edges.csv').astype(int)
+    df_edges = pd.read_csv(dir_path / 'edges.csv')
     print(f'Load edges in {time.time() - begin:.2f} seconds.')
 
     df_nodes = pd.read_csv(dir_path / 'nodes.csv', index_col=0)
@@ -192,7 +191,7 @@ def load_graph(dir_path: Path):
     print(f'Num nodes: {len(df_nodes)}, Num edges: {len(df_edges)}')
     print('Metadata:', metadata)
     nodes = [HyperNode(id=i, type=row.Type, name=row.Name) for i, row in df_nodes.iterrows()]
-    edges = [HyperEdge(nodes=[row.Omics, row.Gene, row.Cell], weight=row.Weight)
+    edges = [HyperEdge(nodes=list(map(int, [row.Omics, row.Gene, row.Cell])), weight=float(row.Weight))
              for _, row in df_edges.iterrows()]
     graph = HyperGraph(nodes=nodes, edges=edges, metadata=metadata)
     return graph

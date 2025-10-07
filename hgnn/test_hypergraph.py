@@ -166,6 +166,13 @@ def test_edge_weights_match_original_data(controlled_data, tmp_path):
 
     # Load the constructed graph
     graph = load_graph(tmp_path / 'validation_test')
+    metadata = graph.metadata
+
+    # Get critical offsets from metadata
+    omics_offset = metadata['omics_offset']
+    gene_offset = metadata['gene_offset']
+    cell_offset = metadata['cell_offset']
+    num_omics = metadata['num_omics']
 
     # Create mapping from node names to IDs for lookup
     node_name_to_id = {node.name: node.id for node in graph.nodes}
@@ -182,7 +189,7 @@ def test_edge_weights_match_original_data(controlled_data, tmp_path):
 
             # Find corresponding node IDs
             omics_node_id = node_name_to_id['Omics_rna']
-            gene_node_id = node_name_to_id[gene]
+            gene_node_id = node_name_to_id[gene + '_rna'] # Adjusted for renamed columns
             cell_node_id = node_name_to_id[cell_name]
 
             # Find matching edge in graph
@@ -207,7 +214,7 @@ def test_edge_weights_match_original_data(controlled_data, tmp_path):
             expected_weight = row[gene]
 
             omics_node_id = node_name_to_id['Omics_atac']
-            gene_node_id = node_name_to_id[gene]
+            gene_node_id = node_name_to_id[gene + '_atac'] # Adjusted for renamed columns
             cell_node_id = node_name_to_id[cell_name]
 
             matching_edges = [
