@@ -308,3 +308,4 @@ def test_node_offsets_correctness(controlled_data, tmp_path):
     # Verify first gene ID matches gene offset
     first_gene_node = next(n for n in graph.nodes if n.type == 1)
     assert first_gene_node.id == metadata['gene_offset']
+

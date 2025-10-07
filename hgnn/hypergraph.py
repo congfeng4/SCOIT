@@ -122,6 +122,7 @@ def process_data(multi_omics_data: dict[str, Path], cell_key: str, dataname: str
     print('Save edge file', edge_file)
 
     metadata = dict(
+        dataname=dataname,
         num_cells=num_cells, num_genes=num_genes, num_omics=num_omics,
         num_nodes=num_nodes, num_edges=len(df_edges),
         omics_offset=omics_offset, gene_offset=gene_offset, cell_offset=cell_offset,
@@ -145,6 +146,7 @@ class HyperNode:
 
 @dataclass
 class HyperEdge:
+    id: int
     nodes: list[int]
     weight: float
 
@@ -191,7 +193,23 @@ def load_graph(dir_path: Path):
     print(f'Num nodes: {len(df_nodes)}, Num edges: {len(df_edges)}')
     print('Metadata:', metadata)
     nodes = [HyperNode(id=i, type=row.Type, name=row.Name) for i, row in df_nodes.iterrows()]
-    edges = [HyperEdge(nodes=list(map(int, [row.Omics, row.Gene, row.Cell])), weight=float(row.Weight))
-             for _, row in df_edges.iterrows()]
+    edges = [HyperEdge(id=i, nodes=list(map(int, [row.Omics, row.Gene, row.Cell])), weight=float(row.Weight))
+             for i, row in df_edges.iterrows()]
     graph = HyperGraph(nodes=nodes, edges=edges, metadata=metadata)
     return graph
+
+
+def load_graph_metadata(dir_path: Path):
+    assert dir_path.exists(), f'Path {dir_path} does not exist.'
+    records = []
+
+    for subdir in dir_path.iterdir():
+        if subdir.is_dir() and (subdir / 'metadata.json').exists():
+            print('Found dataset:', subdir.name)
+            with open(dir_path / 'metadata.json', 'r') as f:
+                metadata = json.load(f)
+            records.append(metadata)
+
+    df = pd.DataFrame.from_records(records)
+    df = df['dataname num_cells num_genes num_omics num_nodes num_edges'.split()]
+    return df
