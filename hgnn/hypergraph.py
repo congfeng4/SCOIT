@@ -7,7 +7,23 @@ import json
 
 
 def process_data(multi_omics_data: dict[str, Path], cell_key: str, dataname: str, prefix: Path, fast_edge=True,
+                 pickle=False,
                  read_csv_args: dict = {}):
+    """
+    Process multi-omics data into a hypergraph and save to disk.
+    Each omics data is a CSV file with rows as cells and columns as genes.
+    The cell_key is the column name of cell identifiers, which should be present in all files
+    and will be used to join the dataframes.
+
+    :param multi_omics_data: A dictionary mapping omics names to their CSV file paths.
+    :param cell_key: The column name for cell identifiers.
+    :param dataname: The name of the dataset.
+    :param prefix: The directory to save the processed hypergraph.
+    :param fast_edge: Whether to use the fast method to construct hyper edges.
+    :param pickle: Whether to save edges in pickle format.
+    :param read_csv_args: Additional arguments to pass to pd.read_csv.
+    :return: None
+    """
 
     def get_omics_id_from_gene(gene_name: str):
         for id, omics_name in enumerate(multi_omics_data.keys()):
@@ -55,6 +71,12 @@ def process_data(multi_omics_data: dict[str, Path], cell_key: str, dataname: str
     node_names = add_node_type(omics_names, 0) + add_node_type(gene_names, 1) + \
         add_node_type(cell_names, 2)
     df_nodes = pd.DataFrame(node_names, columns=['Name', 'Type'])
+
+    savedir = Path(prefix) / dataname
+    savedir.mkdir(parents=True, exist_ok=True)
+    node_file = savedir / 'nodes.csv'
+    df_nodes.to_csv(node_file, index=True)
+    print('Save node file', node_file)
 
     # Node offsets
     omics_offset = 0
@@ -111,16 +133,6 @@ def process_data(multi_omics_data: dict[str, Path], cell_key: str, dataname: str
     df_edges = construct_hyper_edge_fast() if fast_edge else construct_hyper_edge()
     print('Construct edges done, time:', time.time() - begin)
 
-    savedir = Path(prefix) / dataname
-    savedir.mkdir(parents=True, exist_ok=True)
-    node_file = savedir / 'nodes.csv'
-    df_nodes.to_csv(node_file, index=True)
-    print('Save node file', node_file)
-
-    edge_file = savedir / 'edges.csv'
-    df_edges.to_csv(edge_file, index=False)
-    print('Save edge file', edge_file)
-
     metadata = dict(
         dataname=dataname,
         num_cells=num_cells, num_genes=num_genes, num_omics=num_omics,
@@ -135,6 +147,13 @@ def process_data(multi_omics_data: dict[str, Path], cell_key: str, dataname: str
     json.dump(metadata, metadata_file.open('w'), indent=4)
     print('Save metadata', metadata_file)
 
+    edge_file = savedir / 'edges.csv'
+    if pickle:
+        edge_file = edge_file.with_suffix('.pkl')
+        df_edges.to_pickle(edge_file)
+    else:
+        df_edges.to_csv(edge_file, index=False)
+    print('Save edge file', edge_file)
 
 
 @dataclass
@@ -153,8 +172,8 @@ class HyperEdge:
 
 @dataclass
 class HyperGraph:
-    edges: list[HyperEdge]
-    nodes: list[HyperNode]
+    edges: pd.DataFrame
+    nodes: pd.DataFrame
     metadata: dict
 
     def check(self):
@@ -180,33 +199,50 @@ class HyperGraph:
 
 
 def load_graph(dir_path: Path):
+    """
+    Load a hypergraph from a directory.
+    The directory should contain 'nodes.csv', 'edges.csv' (or 'edges.pkl'),
+    and 'metadata.json' files.
+    :param dir_path: The directory path.
+    :return: A HyperGraph object.
+    """
     assert dir_path.exists(), f'Path {dir_path} does not exist.'
 
     with open(dir_path / 'metadata.json', 'r') as f:
         metadata = json.load(f)
+
     begin = time.time()
-    df_edges = pd.read_csv(dir_path / 'edges.csv')
+    try:
+        df_edges = pd.read_csv(dir_path / 'edges.csv')
+    except FileNotFoundError:
+        df_edges = pd.read_pickle(dir_path / 'edges.pkl')
     print(f'Load edges in {time.time() - begin:.2f} seconds.')
 
+    begin = time.time()
     df_nodes = pd.read_csv(dir_path / 'nodes.csv', index_col=0)
-    print('Load nodes and edges from', dir_path)
+    print(f'Load nodes in {time.time() - begin:.2f} seconds.')
+
     print(f'Num nodes: {len(df_nodes)}, Num edges: {len(df_edges)}')
+    graph = HyperGraph(nodes=df_nodes, edges=df_edges, metadata=metadata)
     print('Metadata:', metadata)
-    nodes = [HyperNode(id=i, type=row.Type, name=row.Name) for i, row in df_nodes.iterrows()]
-    edges = [HyperEdge(id=i, nodes=list(map(int, [row.Omics, row.Gene, row.Cell])), weight=float(row.Weight))
-             for i, row in df_edges.iterrows()]
-    graph = HyperGraph(nodes=nodes, edges=edges, metadata=metadata)
     return graph
 
 
 def load_graph_metadata(dir_path: Path):
+    """
+    Load metadata of all hypergraphs in a directory.
+    Each hypergraph should be in a subdirectory with a 'metadata.json' file.
+    :param dir_path: The directory path.
+    :return: A DataFrame with metadata of all hypergraphs.
+    """
+
     assert dir_path.exists(), f'Path {dir_path} does not exist.'
     records = []
 
     for subdir in dir_path.iterdir():
         if subdir.is_dir() and (subdir / 'metadata.json').exists():
             print('Found dataset:', subdir.name)
-            with open(dir_path / 'metadata.json', 'r') as f:
+            with open(subdir / 'metadata.json', 'r') as f:
                 metadata = json.load(f)
             records.append(metadata)
 
