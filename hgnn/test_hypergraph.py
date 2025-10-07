@@ -57,7 +57,7 @@ def test_process_and_load_graph(temp_data, tmp_path):
     assert (output_dir / 'metadata.json').exists()
 
     # Load the graph
-    graph = load_graph(output_dir)
+    graph = load_graph(output_dir, for_test=True)
 
     # Verify graph is a HyperGraph instance
     assert isinstance(graph, HyperGraph)
@@ -165,7 +165,7 @@ def test_edge_weights_match_original_data(controlled_data, tmp_path):
     )
 
     # Load the constructed graph
-    graph = load_graph(tmp_path / 'validation_test')
+    graph = load_graph(tmp_path / 'validation_test', for_test=True)
     metadata = graph.metadata
 
     # Get critical offsets from metadata
@@ -242,7 +242,7 @@ def test_nan_values_are_excluded(controlled_data, tmp_path):
         fast_edge=False
     )
 
-    graph = load_graph(tmp_path / 'nan_test')
+    graph = load_graph(tmp_path / 'nan_test', for_test=True)
     node_name_to_id = {node.name: node.id for node in graph.nodes}
 
     # Check RNA NaNs are excluded
@@ -293,7 +293,7 @@ def test_node_offsets_correctness(controlled_data, tmp_path):
         prefix=tmp_path
     )
 
-    graph = load_graph(tmp_path / 'offset_test')
+    graph = load_graph(tmp_path / 'offset_test', for_test=True)
     metadata = graph.metadata
 
     # Verify offset calculations

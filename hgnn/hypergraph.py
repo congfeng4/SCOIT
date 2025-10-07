@@ -198,7 +198,7 @@ class HyperGraph:
         return str(self.metadata)
 
 
-def load_graph(dir_path: Path):
+def load_graph(dir_path: Path, for_test=False) -> HyperGraph:
     """
     Load a hypergraph from a directory.
     The directory should contain 'nodes.csv', 'edges.csv' (or 'edges.pkl'),
@@ -223,7 +223,16 @@ def load_graph(dir_path: Path):
     print(f'Load nodes in {time.time() - begin:.2f} seconds.')
 
     print(f'Num nodes: {len(df_nodes)}, Num edges: {len(df_edges)}')
-    graph = HyperGraph(nodes=df_nodes, edges=df_edges, metadata=metadata)
+
+    if for_test:
+        nodes = [HyperNode(id=i, type=row.Type, name=row.Name) for i, row in df_nodes.iterrows()]
+        edges = [HyperEdge(id=i, nodes=list(map(int, [row.Omics, row.Gene, row.Cell])), weight=float(row.Weight))
+            for i, row in df_edges.iterrows()]
+        graph = HyperGraph(nodes=nodes, edges=edges, metadata=metadata)
+    else:
+        graph = HyperGraph(nodes=df_nodes, edges=df_edges, metadata=metadata)
+
+    graph.check()
     print('Metadata:', metadata)
     return graph
 
