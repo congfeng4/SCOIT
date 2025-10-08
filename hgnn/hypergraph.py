@@ -109,6 +109,7 @@ class HyperGraphCreator:
         self.omics_offset = 0
         self.gene_offset = self.num_omics
         self.cell_offset = self.num_omics + self.num_genes
+        self.orig_edge_count = 0
 
         print(f'{self.num_omics=}, {self.num_cells=}, {self.num_genes=}, {self.num_nodes=}')
 
@@ -188,6 +189,7 @@ class HyperGraphCreator:
 
     def filter_edges(self) -> None:
         """Filter edges based on value distribution."""
+        self.orig_edge_count = self.df.count().sum()
         if self.filter_edge:
             if (self.df >= 0).all().all():
                 self.filter_edge = 'non-negative'
@@ -199,6 +201,7 @@ class HyperGraphCreator:
                 for col in self.df.columns:
                     self.df[col] = robust_zscore_filter(self.df[col])
 
+        print(f'Original edges: {self.orig_edge_count}')
         print(f'{self.filter_edge=}, remaining {self.df.count().sum()} edges')
 
     def save_metadata_and_edges(self, df_edges: pd.DataFrame) -> None:
@@ -211,6 +214,7 @@ class HyperGraphCreator:
             'num_genes': self.num_genes,
             'num_omics': self.num_omics,
             'num_nodes': self.num_nodes,
+            'orig_edges': int(self.orig_edge_count),
             'num_edges': len(df_edges),
             'omics_offset': self.omics_offset,
             'gene_offset': self.gene_offset,
