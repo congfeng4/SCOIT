@@ -6,6 +6,21 @@ from dataclasses import dataclass
 import json
 
 
+def robust_zscore(x):
+    med = np.median(x)
+    mad = np.median(np.abs(x - med))
+    mad_corr = mad / 0.6745
+    # 避免 mad=0（所有值相同）
+    mad_corr = np.clip(mad_corr, a_min=1e-8, a_max=None)
+    return (x - med) / mad_corr
+
+
+def robust_zscore_filter(series, thresh=3.5):
+    rz = robust_zscore(series.dropna())
+    mask = np.abs(rz) <= thresh
+    return series.where(mask, np.nan)   # 异常值置 NaN
+
+
 class HyperGraphCreator:
     """
     A class to process multi-omics data into a hypergraph and save it to disk.
@@ -177,13 +192,13 @@ class HyperGraphCreator:
             if (self.df >= 0).all().all():
                 self.filter_edge = 'non-negative'
                 print('All values are non-negative, using > 0 to filter edges')
-                mask = self.df > 0
+                self.df[self.df <= 0] = np.nan
             else:
-                self.filter_edge = '3-sigma'
-                print('Values contain negatives, using mean ± 3*std to filter edges')
-                mask = self.df.abs() >= 3 * self.df.std()
+                self.filter_edge = 'robust-zscore'
+                print('Values contain negatives, using robust zscore to filter edges')
+                for col in self.df.columns:
+                    self.df[col] = robust_zscore_filter(self.df[col])
 
-            self.df[~mask] = np.nan
         print(f'{self.filter_edge=}, remaining {self.df.count().sum()} edges')
 
     def save_metadata_and_edges(self, df_edges: pd.DataFrame) -> None:
