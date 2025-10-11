@@ -5,6 +5,8 @@ import time
 from dataclasses import dataclass
 import json
 
+from tunits import Pa
+
 
 def robust_zscore(x):
     med = np.median(x)
@@ -339,6 +341,7 @@ def load_graph(dir_path: Path, for_test=False) -> HyperGraph:
     :param dir_path: The directory path.
     :return: A HyperGraph object.
     """
+    dir_path = Path(dir_path)
     assert dir_path.exists(), f'Path {dir_path} does not exist.'
 
     with open(dir_path / 'metadata.json', 'r') as f:
@@ -390,3 +393,37 @@ def load_graph_metadata(dir_path: Path):
     df = pd.DataFrame.from_records(records)
     df = df['dataname num_cells num_genes num_omics num_nodes num_edges'.split()]
     return df
+
+
+def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Path):
+    edges = hg.edges
+    metadata = hg.metadata
+
+    df = pd.DataFrame({
+        'Cell':  edges['Cell'] - metadata['cell_offset'],
+        'Gene': edges['Gene'] - metadata['gene_offset'],
+        'Omics': edges['Omics'] - metadata['omics_offset'],
+        'Weight': edges['Weight'],
+    })
+    nums_type = [metadata['num_cells'], metadata['num_genes'], metadata['num_omics']]
+    print('nums_type', nums_type)
+
+    edges_data = df[['Cell', 'Gene', 'Omics']].values
+    edges_weight = df['Weight'].values
+    print('num_edges', edges_data.shape[0])
+
+    from sklearn.model_selection import train_test_split
+
+    train_data, test_data, train_weights, test_weights = train_test_split(edges_data, edges_weight, train_size=train_size)
+    
+    print('train_data', train_data.shape, 'train_weights', train_weights.shape,
+           'test_data', test_data.shape, 'test_weights', test_weights.shape)
+
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+    np.savez(save_dir / 'train_data.npz', train_data=train_data, train_weights=train_weights,
+             nums_type=nums_type)
+    np.savez(save_dir / 'test_data.npz', test_data=test_data, test_weights=test_weights,
+             nums_type=nums_type)
+    print('Save to', save_dir)
+

@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 import json
 import numpy as np
-from .hypergraph import process_data, load_graph, HyperGraph
+from .hypergraph import process_data, load_graph, HyperGraph, convert_to_hypersagnn_format
 
 
 @pytest.fixture
@@ -309,3 +309,47 @@ def test_node_offsets_correctness(controlled_data, tmp_path):
     first_gene_node = next(n for n in graph.nodes if n.type == 1)
     assert first_gene_node.id == metadata['gene_offset']
 
+
+# Mock HyperGraph class to simulate input
+class MockHyperGraph:
+    def __init__(self, edges, metadata):
+        self.edges = edges
+        self.metadata = metadata
+
+
+def test_basic_transformation_and_saving(tmp_path):
+    """Test basic data transformation and file creation"""
+    # Create test input data
+    test_edges = {
+        'Cell': np.array([10, 11, 12]),
+        'Gene': np.array([20, 21, 22]),
+        'Omics': np.array([30, 31, 32]),
+        'Weight': np.array([0.5, 0.6, 0.7]),
+    }
+
+    test_metadata = {
+        'cell_offset': 10,
+        'gene_offset': 20,
+        'omics_offset': 30,
+        'num_cells': 5,
+        'num_genes': 10,
+        'num_omics': 3
+    }
+
+    # Create mock hypergraph
+    hg = MockHyperGraph(test_edges, test_metadata)
+
+    # Run the function
+    convert_to_hypersagnn_format(hg, train_size=0.66, save_dir=tmp_path)
+
+    # Verify output files exist
+    assert (tmp_path / 'train_data.npz').exists()
+    assert (tmp_path / 'test_data.npz').exists()
+
+    # Load and verify train data
+    train_data = np.load(tmp_path / 'train_data.npz')
+    assert 'train_data' in train_data
+    assert 'train_weights' in train_data
+    assert 'nums_type' in train_data
+    assert list(train_data['nums_type']) == [5, 10, 3]  # From metadata
+    
