@@ -20,6 +20,7 @@ from sklearn import preprocessing
 from sklearn.metrics.pairwise import pairwise_distances
 from sklearn.decomposition import PCA
 import torch.backends.cudnn as cudnn
+
 cudnn.benchmark = True
 
 from unioncom.visualization import visualize
@@ -28,8 +29,8 @@ from unioncom.utils import *
 from unioncom.test import *
 import heapq
 
-class UnionCom(object):
 
+class UnionCom(object):
     """
     UnionCom software for single-cell mulit-omics data integration
     Published at https://academic.oup.com/bioinformatics/article/36/Supplement_1/i48/5870490
@@ -90,9 +91,9 @@ class UnionCom(object):
     """
 
     def __init__(self, integration_type='MultiOmics', epoch_pd=2000, epoch_DNN=100, \
-        epsilon=0.01, lr=0.001, batch_size=100, rho=10, beta=1, perplexity=30, \
-        log_DNN=10, log_pd=100, manual_seed=666, delay=0, kmax=40,  \
-        output_dim=32, distance_mode ='geodesic', project_mode='tsne'):
+                 epsilon=0.01, lr=0.001, batch_size=100, rho=10, beta=1, perplexity=30, \
+                 log_DNN=10, log_pd=100, manual_seed=666, delay=0, kmax=40, \
+                 output_dim=32, distance_mode='geodesic', project_mode='tsne'):
 
         self.integration_type = integration_type
         self.epoch_pd = epoch_pd
@@ -121,16 +122,18 @@ class UnionCom(object):
         find correspondence between datasets & align multi-omics data in a common embedded space
         """
 
-        distance_modes =  ['euclidean', 'l2', 'l1', 'manhattan', 'cityblock', 'braycurtis', 'canberra', 
-            'chebyshev', 'correlation', 'cosine', 'dice', 'hamming', 'jaccard', 'kulsinski', 'mahalanobis', 
-            'matching', 'minkowski', 'rogerstanimoto', 'russellrao', 'seuclidean', 'sokalmichener', 'sokalsneath', 
-            'sqeuclidean', 'yule', 'wminkowski', 'nan_euclidean', 'haversine']
+        distance_modes = ['euclidean', 'l2', 'l1', 'manhattan', 'cityblock', 'braycurtis', 'canberra',
+                          'chebyshev', 'correlation', 'cosine', 'dice', 'hamming', 'jaccard', 'kulsinski',
+                          'mahalanobis',
+                          'matching', 'minkowski', 'rogerstanimoto', 'russellrao', 'seuclidean', 'sokalmichener',
+                          'sokalsneath',
+                          'sqeuclidean', 'yule', 'wminkowski', 'nan_euclidean', 'haversine']
 
-        if self.integration_type not in ['BatchCorrect','MultiOmics']:
-                raise Exception("integration_type error! Enter MultiOmics or BatchCorrect.")
+        if self.integration_type not in ['BatchCorrect', 'MultiOmics']:
+            raise Exception("integration_type error! Enter MultiOmics or BatchCorrect.")
 
         if self.distance_mode is not 'geodesic' and self.distance_mode not in distance_modes:
-                raise Exception("distance_mode error! Enter a correct distance_mode.")
+            raise Exception("distance_mode error! Enter a correct distance_mode.")
 
         time1 = time.time()
         init_random_seed(self.manual_seed)
@@ -145,7 +148,7 @@ class UnionCom(object):
         for i in range(dataset_num):
             print("Dataset {}:".format(i), np.shape(dataset[i]))
 
-            dataset[i] = (dataset[i]- np.min(dataset[i])) / (np.max(dataset[i]) - np.min(dataset[i]))
+            dataset[i] = (dataset[i] - np.min(dataset[i])) / (np.max(dataset[i]) - np.min(dataset[i]))
 
             if self.distance_mode == 'geodesic':
                 distances = geodesic_distances(dataset[i], self.kmax)
@@ -153,7 +156,6 @@ class UnionCom(object):
             else:
                 distances = pairwise_distances(dataset[i], metric=self.distance_mode)
                 self.dist.append(distances)
-            
 
             if self.integration_type == 'BatchCorrect':
                 if self.distance_mode not in distance_modes:
@@ -162,17 +164,17 @@ class UnionCom(object):
                     if self.col[i] != self.col[-1]:
                         raise Exception("BatchCorrect needs aligned features.")
                     cor_distances = pairwise_distances(dataset[i], dataset[-1], metric=self.distance_mode)
-                    self.cor_dist.append(cor_distances)     
+                    self.cor_dist.append(cor_distances)
 
-        # find correspondence between samples
+                    # find correspondence between samples
         pairs_x = []
         pairs_y = []
         match_result = self.match(dataset=dataset)
-        for i in range(dataset_num-1):
-        	cost = np.max(match_result[i])-match_result[i]
-        	row_ind,col_ind = linear_sum_assignment(cost)
-        	pairs_x.append(row_ind)
-        	pairs_y.append(col_ind)
+        for i in range(dataset_num - 1):
+            cost = np.max(match_result[i]) - match_result[i]
+            row_ind, col_ind = linear_sum_assignment(cost)
+            pairs_x.append(row_ind)
+            pairs_y.append(col_ind)
 
         #  projection
         if self.project_mode == 'tsne':
@@ -189,7 +191,7 @@ class UnionCom(object):
             integrated_data = self.project_tsne(dataset, pairs_x, pairs_y, P_joint)
 
         elif self.project_mode == 'barycentric':
-            integrated_data = self.project_barycentric(dataset, match_result)	
+            integrated_data = self.project_barycentric(dataset, match_result)
 
         else:
             raise Exception("Choose correct project_mode: 'tsne or barycentric'")
@@ -197,7 +199,7 @@ class UnionCom(object):
         print("---------------------------------")
         print("unionCom Done!")
         time2 = time.time()
-        print('time:', time2-time1, 'seconds')
+        print('time:', time2 - time1, 'seconds')
 
         return match_result, integrated_data
 
@@ -209,17 +211,17 @@ class UnionCom(object):
         dataset_num = len(dataset)
         cor_pairs = []
         N = np.int(np.max([len(l) for l in dataset]))
-        for i in range(dataset_num-1):
+        for i in range(dataset_num - 1):
             print("---------------------------------")
-            print("Find correspondence between Dataset {} and Dataset {}".format(i+1, \
-                len(dataset)))
+            print("Find correspondence between Dataset {} and Dataset {}".format(i + 1, \
+                                                                                 len(dataset)))
             if self.integration_type == "MultiOmics":
                 cor_pairs.append(self.Prime_Dual([self.dist[i], self.dist[-1]], dx=self.col[i], dy=self.col[-1]))
             else:
                 cor_pairs.append(self.Prime_Dual(self.cor_dist[i]))
 
         print("Finished Matching!")
-        
+
         return cor_pairs
 
     def Prime_Dual(self, dist, dx=None, dy=None):
@@ -237,32 +239,32 @@ class UnionCom(object):
             Ky = Ky / N
             Kx = torch.from_numpy(Kx).float().to(self.device)
             Ky = torch.from_numpy(Ky).float().to(self.device)
-            a = np.sqrt(dy/dx)
+            a = np.sqrt(dy / dx)
             m = np.shape(Kx)[0]
             n = np.shape(Ky)[0]
 
         else:
             m = np.shape(dist)[0]
             n = np.shape(dist)[1]
-            a=1
+            a = 1
             dist = torch.from_numpy(dist).float().to(self.device)
 
-        F = np.zeros((m,n))
+        F = np.zeros((m, n))
         F = torch.from_numpy(F).float().to(self.device)
-        Im = torch.ones((m,1)).float().to(self.device)
-        In = torch.ones((n,1)).float().to(self.device)
-        Lambda = torch.zeros((n,1)).float().to(self.device)
-        Mu = torch.zeros((m,1)).float().to(self.device)
-        S = torch.zeros((n,1)).float().to(self.device)
-        
+        Im = torch.ones((m, 1)).float().to(self.device)
+        In = torch.ones((n, 1)).float().to(self.device)
+        Lambda = torch.zeros((n, 1)).float().to(self.device)
+        Mu = torch.zeros((m, 1)).float().to(self.device)
+        S = torch.zeros((n, 1)).float().to(self.device)
+
         pho1 = 0.9
         pho2 = 0.999
         delta = 10e-8
-        Fst_moment = torch.zeros((m,n)).float().to(self.device)
-        Snd_moment = torch.zeros((m,n)).float().to(self.device)
+        Fst_moment = torch.zeros((m, n)).float().to(self.device)
+        Snd_moment = torch.zeros((m, n)).float().to(self.device)
 
-        i=0
-        while(i<self.epoch_pd):
+        i = 0
+        while (i < self.epoch_pd):
 
             ### compute gradient
 
@@ -275,50 +277,53 @@ class UnionCom(object):
             # grad2 = torch.mm(Kx, torch.mm(F, torch.t(w_tmp)))
 
             if self.integration_type == "MultiOmics":
-                grad = 4*torch.mm(F, torch.mm(Ky, torch.mm(torch.t(F), torch.mm(F, Ky)))) \
-                - 4*a*torch.mm(Kx, torch.mm(F,Ky)) + torch.mm(Mu, torch.t(In)) \
-                + torch.mm(Im, torch.t(Lambda)) + self.rho*(torch.mm(F, torch.mm(In, torch.t(In))) - torch.mm(Im, torch.t(In)) \
-                + torch.mm(Im, torch.mm(torch.t(Im), F)) + torch.mm(Im, torch.t(S-In)))
+                grad = 4 * torch.mm(F, torch.mm(Ky, torch.mm(torch.t(F), torch.mm(F, Ky)))) \
+                       - 4 * a * torch.mm(Kx, torch.mm(F, Ky)) + torch.mm(Mu, torch.t(In)) \
+                       + torch.mm(Im, torch.t(Lambda)) + self.rho * (
+                                   torch.mm(F, torch.mm(In, torch.t(In))) - torch.mm(Im, torch.t(In)) \
+                                   + torch.mm(Im, torch.mm(torch.t(Im), F)) + torch.mm(Im, torch.t(S - In)))
             else:
-                grad = dist + torch.mm(Im, torch.t(Lambda)) + self.rho*(torch.mm(F, torch.mm(In, torch.t(In))) - torch.mm(Im, torch.t(In)) \
-                + torch.mm(Im, torch.mm(torch.t(Im), F)) + torch.mm(Im, torch.t(S-In)))
+                grad = dist + torch.mm(Im, torch.t(Lambda)) + self.rho * (
+                            torch.mm(F, torch.mm(In, torch.t(In))) - torch.mm(Im, torch.t(In)) \
+                            + torch.mm(Im, torch.mm(torch.t(Im), F)) + torch.mm(Im, torch.t(S - In)))
             # print(dist)
             ### adam momentum
             i += 1
-            Fst_moment = pho1*Fst_moment + (1-pho1)*grad
-            Snd_moment = pho2*Snd_moment + (1-pho2)*grad*grad
-            hat_Fst_moment = Fst_moment/(1-np.power(pho1,i))
-            hat_Snd_moment = Snd_moment/(1-np.power(pho2,i))
-            grad = hat_Fst_moment/(torch.sqrt(hat_Snd_moment)+delta)
+            Fst_moment = pho1 * Fst_moment + (1 - pho1) * grad
+            Snd_moment = pho2 * Snd_moment + (1 - pho2) * grad * grad
+            hat_Fst_moment = Fst_moment / (1 - np.power(pho1, i))
+            hat_Snd_moment = Snd_moment / (1 - np.power(pho2, i))
+            grad = hat_Fst_moment / (torch.sqrt(hat_Snd_moment) + delta)
             F_tmp = F - grad
-            F_tmp[F_tmp<0]=0
+            F_tmp[F_tmp < 0] = 0
 
             ### update 
-            F = (1-self.epsilon)*F + self.epsilon*F_tmp
+            F = (1 - self.epsilon) * F + self.epsilon * F_tmp
 
             ### update slack variable
-            grad_s = Lambda + self.rho*(torch.mm(torch.t(F), Im) - In + S)
+            grad_s = Lambda + self.rho * (torch.mm(torch.t(F), Im) - In + S)
             s_tmp = S - grad_s
-            s_tmp[s_tmp<0]=0
-            S = (1-self.epsilon)*S + self.epsilon*s_tmp
+            s_tmp[s_tmp < 0] = 0
+            S = (1 - self.epsilon) * S + self.epsilon * s_tmp
 
             ### update dual variables
-            Mu = Mu + self.epsilon*(torch.mm(F,In) - Im)
-            Lambda = Lambda + self.epsilon*(torch.mm(torch.t(F), Im) - In + S)
+            Mu = Mu + self.epsilon * (torch.mm(F, In) - Im)
+            Lambda = Lambda + self.epsilon * (torch.mm(torch.t(F), Im) - In + S)
 
             #### if scaling factor changes too fast, we can delay the update
             if self.integration_type == "MultiOmics":
-                if i>=self.delay:
+                if i >= self.delay:
                     a = torch.trace(torch.mm(Kx, torch.mm(torch.mm(F, Ky), torch.t(F)))) / \
-                    torch.trace(torch.mm(Kx, Kx))
+                        torch.trace(torch.mm(Kx, Kx))
 
-            if (i+1) % self.log_pd == 0:
+            if (i + 1) % self.log_pd == 0:
                 if self.integration_type == "MultiOmics":
-                    norm2 = torch.norm(a*Kx - torch.mm(torch.mm(F, Ky), torch.t(F)))
-                    print("epoch:[{:d}/{:d}] err:{:.4f} alpha:{:.4f}".format(i+1, self.epoch_pd, norm2.data.item(), a))
+                    norm2 = torch.norm(a * Kx - torch.mm(torch.mm(F, Ky), torch.t(F)))
+                    print(
+                        "epoch:[{:d}/{:d}] err:{:.4f} alpha:{:.4f}".format(i + 1, self.epoch_pd, norm2.data.item(), a))
                 else:
-                    norm2 = torch.norm(dist*F)
-                    print("epoch:[{:d}/{:d}] err:{:.4f}".format(i+1, self.epoch_pd, norm2.data.item()))
+                    norm2 = torch.norm(dist * F)
+                    print("epoch:[{:d}/{:d}] err:{:.4f}".format(i + 1, self.epoch_pd, norm2.data.item()))
 
         F = F.cpu().numpy()
         return F
@@ -327,7 +332,7 @@ class UnionCom(object):
         print("---------------------------------")
         print("Begin finding the embedded space")
         integrated_data = []
-        for i in range(len(dataset)-1):
+        for i in range(len(dataset) - 1):
             integrated_data.append(np.matmul(match_result[i], dataset[-1]))
         integrated_data.append(dataset[-1])
         print("Done")
@@ -356,7 +361,7 @@ class UnionCom(object):
             dataset[i] = torch.from_numpy(dataset[i]).float().to(self.device)
 
         for epoch in range(self.epoch_DNN):
-            len_dataloader = np.int(np.max(self.row)/self.batch_size)
+            len_dataloader = np.int(np.max(self.row) / self.batch_size)
             if len_dataloader == 0:
                 len_dataloader = 1
                 self.batch_size = np.max(self.row)
@@ -375,13 +380,12 @@ class UnionCom(object):
                     ## loss of structure preserving 
                     KL_loss.append(torch.sum(P_tmp * torch.log(P_tmp / Q_joint)))
 
-        		## loss of structure matching 
+                ## loss of structure matching
                 feature_loss = np.array(0)
                 feature_loss = torch.from_numpy(feature_loss).to(self.device).float()
-                for i in range(dataset_num-1):
-
+                for i in range(dataset_num - 1):
                     low_dim = Project_DNN(dataset[i][pairs_x[i]], i)
-                    low_dim_biggest_dataset = Project_DNN(dataset[dataset_num-1][pairs_y[i]], len(dataset)-1)
+                    low_dim_biggest_dataset = Project_DNN(dataset[dataset_num - 1][pairs_y[i]], len(dataset) - 1)
                     feature_loss += c_mse(low_dim, low_dim_biggest_dataset)
                     # min_norm = torch.min(torch.norm(low_dim), torch.norm(low_dim_biggest_dataset))
                     # feature_loss += torch.abs(torch.norm(low_dim) - torch.norm(low_dim_biggest_dataset))/min_norm
@@ -394,9 +398,10 @@ class UnionCom(object):
                 loss.backward()
                 optimizer.step()
 
-            if (epoch+1) % self.log_DNN == 0:
-                print("epoch:[{:d}/{}]: loss:{:4f}, align_loss:{:4f}".format(epoch+1, \
-                    self.epoch_DNN, loss.data.item(), feature_loss.data.item()))
+            if (epoch + 1) % self.log_DNN == 0:
+                print("epoch:[{:d}/{}]: loss:{:4f}, align_loss:{:4f}".format(epoch + 1, \
+                                                                             self.epoch_DNN, loss.data.item(),
+                                                                             feature_loss.data.item()))
 
         integrated_data = []
         for i in range(dataset_num):
@@ -415,14 +420,15 @@ class UnionCom(object):
 
         test_UnionCom(integrated_data, datatype)
 
+
 def knn_alignment(data, K=3, unioncom_outputdim=32):
     uc = UnionCom(output_dim=unioncom_outputdim)
     match_result, _ = uc.fit_transform(dataset=[np.nan_to_num(each_data) for each_data in data])
-    
+
     new_data = [data[0]]
     for n in range(1, len(data)):
         alignment_data = []
-        match = match_result[n-1]
+        match = match_result[n - 1]
         for i in range(match.shape[0]):
             max_k_index = heapq.nlargest(K, range(match.shape[1]), match[i].take)
             alignment_data.append(np.nanmean(data[n][max_k_index], axis=0))

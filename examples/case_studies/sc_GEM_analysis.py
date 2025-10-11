@@ -3,6 +3,7 @@ import pandas as pd
 from scoit import sc_multi_omics
 import time
 
+
 def load_data():
     expression_data = np.array(pd.read_csv("data/sc_GEM/expression_data.csv", index_col=0))
     methylation_data = np.array(pd.read_csv("data/sc_GEM/methylation_data.csv", index_col=0))
@@ -25,9 +26,7 @@ def load_data():
     return expression_data, methylation_data, labels
 
 
-
 if __name__ == "__main__":
-
     start_time = time.time()
     expression_data, methylation_data, labels = load_data()
     data = np.array([expression_data, methylation_data])
@@ -36,9 +35,9 @@ if __name__ == "__main__":
     sc_model = sc_multi_omics()
     predict_data = sc_model.fit(data, dist="negative_bionomial", n_epochs=1000, device=0)
 
-    np.savetxt("cell_embeddings.csv", sc_model.C, delimiter = ',')
-    np.savetxt("gene_embeddings.csv", sc_model.G, delimiter = ',')
-    np.savetxt("omics_embeddings.csv", sc_model.O, delimiter = ',')
+    np.savetxt("cell_embeddings.csv", sc_model.C, delimiter=',')
+    np.savetxt("gene_embeddings.csv", sc_model.G, delimiter=',')
+    np.savetxt("omics_embeddings.csv", sc_model.O, delimiter=',')
     np.savetxt("predict_data_expression.csv", predict_data[0])
     np.savetxt("predict_data_methylation.csv", predict_data[1])
     print(time.time() - start_time)

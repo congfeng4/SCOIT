@@ -20,7 +20,7 @@ def robust_zscore(x):
 def robust_zscore_filter(series, thresh=3.5):
     rz = robust_zscore(series.dropna())
     mask = np.abs(rz) <= thresh
-    return series.where(mask, np.nan)   # 异常值置 NaN
+    return series.where(mask, np.nan)  # 异常值置 NaN
 
 
 class HyperGraphCreator:
@@ -117,6 +117,7 @@ class HyperGraphCreator:
 
     def create_nodes_file(self) -> None:
         """Create and save the nodes CSV file."""
+
         def add_node_type(nodes, node_type):
             return [(node, node_type) for node in nodes]
 
@@ -363,7 +364,7 @@ def load_graph(dir_path: Path, for_test=False) -> HyperGraph:
     if for_test:
         nodes = [HyperNode(id=i, type=row.Type, name=row.Name) for i, row in df_nodes.iterrows()]
         edges = [HyperEdge(id=i, nodes=list(map(int, [row.Omics, row.Gene, row.Cell])), weight=float(row.Weight))
-            for i, row in df_edges.iterrows()]
+                 for i, row in df_edges.iterrows()]
         graph = HyperGraph(nodes=nodes, edges=edges, metadata=metadata)
     else:
         graph = HyperGraph(nodes=df_nodes, edges=df_edges, metadata=metadata)
@@ -400,7 +401,7 @@ def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Pa
     metadata = hg.metadata
 
     df = pd.DataFrame({
-        'Cell':  edges['Cell'] - metadata['cell_offset'],
+        'Cell': edges['Cell'] - metadata['cell_offset'],
         'Gene': edges['Gene'] - metadata['gene_offset'],
         'Omics': edges['Omics'] - metadata['omics_offset'],
         'Weight': edges['Weight'],
@@ -414,10 +415,11 @@ def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Pa
 
     from sklearn.model_selection import train_test_split
 
-    train_data, test_data, train_weights, test_weights = train_test_split(edges_data, edges_weight, train_size=train_size)
-    
+    train_data, test_data, train_weights, test_weights = train_test_split(edges_data, edges_weight,
+                                                                          train_size=train_size)
+
     print('train_data', train_data.shape, 'train_weights', train_weights.shape,
-           'test_data', test_data.shape, 'test_weights', test_weights.shape)
+          'test_data', test_data.shape, 'test_weights', test_weights.shape)
 
     save_dir = Path(save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -426,4 +428,3 @@ def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Pa
     np.savez(save_dir / 'test_data.npz', test_data=test_data, test_weights=test_weights,
              nums_type=nums_type)
     print('Save to', save_dir)
-

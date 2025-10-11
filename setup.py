@@ -10,7 +10,7 @@ setup(
     packages=setuptools.find_packages(),
     url='https://github.com/deepomicslab/SCOIT',
     license='MIT',
-	author='WANG Ruohan',
+    author='WANG Ruohan',
     author_email='ruohawang2-c@my.cityu.edu.hk',
     description='SCOIT is an implementation of a probabilistic tensor decomposition framework for single-cell multi-omics data integration.',
     long_description=long_description,
@@ -18,7 +18,7 @@ setup(
     install_requires=['numpy', 'torch', 'scipy', 'scikit-learn'],
     classifiers=[
         "Programming Language :: Python :: 3",
-		"License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3.8",
     ],
     python_requires='>=3.6',

@@ -4,23 +4,26 @@ from pathlib import Path
 import pandas as pd
 from .hypergraph import HyperGraphCreator
 
+
 @pytest.fixture(scope="function")
 def temp_dir():
     with tempfile.TemporaryDirectory() as tmpdir:
         yield Path(tmpdir)
+
 
 def create_test_csv(temp_dir, data, filename="data.csv"):
     path = temp_dir / filename
     pd.DataFrame(data).to_csv(path, index=False)
     return path
 
+
 def test_non_negative_filter(temp_dir):
     """Test non-negative filter (> 0) with appropriate data"""
     # Data: non-negative values (including zeros) - should trigger >0 filter
     data = {
         "cell_id": ["c1", "c2", "c3"],
-        "gene1": [0, 2.5, 0],    # Zeros should be filtered
-        "gene2": [3.0, 0, 5.0]   # Zeros should be filtered
+        "gene1": [0, 2.5, 0],  # Zeros should be filtered
+        "gene2": [3.0, 0, 5.0]  # Zeros should be filtered
     }
     data_path = create_test_csv(temp_dir, data)
 

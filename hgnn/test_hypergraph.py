@@ -33,6 +33,7 @@ def temp_data(tmp_path):
         'omics2': omics2_path
     }
 
+
 def test_process_and_load_graph(temp_data, tmp_path):
     """Test the complete pipeline: process data and load the graph"""
     # Configuration parameters
@@ -94,6 +95,7 @@ def test_process_and_load_graph(temp_data, tmp_path):
     # Run built-in consistency check
     graph.check()
 
+
 def test_process_data_with_different_options(temp_data, tmp_path):
     """Test processing with different parameters"""
     # Test with fast_edge=False
@@ -117,6 +119,7 @@ def test_process_data_with_different_options(temp_data, tmp_path):
     # Verify outputs exist
     assert (tmp_path / 'test_slow' / 'edges.csv').exists()
     assert (tmp_path / 'test_custom_csv' / 'edges.csv').exists()
+
 
 @pytest.fixture
 def controlled_data(tmp_path):
@@ -147,6 +150,7 @@ def controlled_data(tmp_path):
         'original_rna': pd.DataFrame(omics_rna_data),
         'original_atac': pd.DataFrame(omics_atac_data)
     }
+
 
 def test_edge_weights_match_original_data(controlled_data, tmp_path):
     """Verify that hypergraph edges exactly match original multi-omics values"""
@@ -189,7 +193,7 @@ def test_edge_weights_match_original_data(controlled_data, tmp_path):
 
             # Find corresponding node IDs
             omics_node_id = node_name_to_id['Omics_rna']
-            gene_node_id = node_name_to_id[gene + '_rna'] # Adjusted for renamed columns
+            gene_node_id = node_name_to_id[gene + '_rna']  # Adjusted for renamed columns
             cell_node_id = node_name_to_id[cell_name]
 
             # Find matching edge in graph
@@ -214,7 +218,7 @@ def test_edge_weights_match_original_data(controlled_data, tmp_path):
             expected_weight = row[gene]
 
             omics_node_id = node_name_to_id['Omics_atac']
-            gene_node_id = node_name_to_id[gene + '_atac'] # Adjusted for renamed columns
+            gene_node_id = node_name_to_id[gene + '_atac']  # Adjusted for renamed columns
             cell_node_id = node_name_to_id[cell_name]
 
             matching_edges = [
@@ -226,6 +230,7 @@ def test_edge_weights_match_original_data(controlled_data, tmp_path):
                 f"Missing edge for {gene} in {cell_name}"
             assert matching_edges[0].weight == expected_weight, \
                 f"Weight mismatch for {gene} in {cell_name}"
+
 
 def test_nan_values_are_excluded(controlled_data, tmp_path):
     """Verify that NaN values in original data are not included as edges"""
@@ -283,6 +288,7 @@ def test_nan_values_are_excluded(controlled_data, tmp_path):
                     ]
                     assert len(matching_edges) == 0, \
                         f"Found edge for NaN value: {gene} in {cell_name}"
+
 
 def test_node_offsets_correctness(controlled_data, tmp_path):
     """Verify node offsets in metadata match actual node IDs"""
@@ -352,4 +358,3 @@ def test_basic_transformation_and_saving(tmp_path):
     assert 'train_weights' in train_data
     assert 'nums_type' in train_data
     assert list(train_data['nums_type']) == [5, 10, 3]  # From metadata
-    

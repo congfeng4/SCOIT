@@ -20,19 +20,19 @@ target_gene_embedding = gene_emb[gene_list.index(target_gene)]
 target_protein = "CD3"
 target_protein_embedding = protein_emb[protein_list.index(target_protein)]
 pearson_ = pearson_correlation(target_gene_embedding, target_protein_embedding)
-print("Pearson correlation between gene %s and protein %s is %s."%(target_gene, target_protein, pearson_))
+print("Pearson correlation between gene %s and protein %s is %s." % (target_gene, target_protein, pearson_))
 
 target_gene = "HUMAN_CD3D"
 target_gene_embedding = gene_emb[gene_list.index(target_gene)]
 target_protein = "CD4"
 target_protein_embedding = protein_emb[protein_list.index(target_protein)]
 pearson_ = pearson_correlation(target_gene_embedding, target_protein_embedding)
-print("Pearson correlation between gene %s and protein %s is %s."%(target_gene, target_protein, pearson_))
+print("Pearson correlation between gene %s and protein %s is %s." % (target_gene, target_protein, pearson_))
 
 # gene projection
 target_protein = "CD3"
 target_protein_embedding = protein_emb[protein_list.index(target_protein)]
-feature_projection(target_gene_embedding, cell_emb, figure_name="%s_distribution.png"%target_protein)
+feature_projection(target_gene_embedding, cell_emb, figure_name="%s_distribution.png" % target_protein)
 target_protein = "CD4"
 target_protein_embedding = protein_emb[protein_list.index(target_protein)]
-feature_projection(target_gene_embedding, cell_emb, figure_name="%s_distribution.png"%target_protein)
+feature_projection(target_gene_embedding, cell_emb, figure_name="%s_distribution.png" % target_protein)
