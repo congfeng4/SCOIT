@@ -111,6 +111,7 @@ class MultipleEmbedding(nn.Module):
             num_list=None,
             node_type_mapping=None):
         super().__init__()
+        # print('embedding_weights', [np.isnan(x.todense()).any() for x in embedding_weights])
         print(dim)
         self.num_list = torch.tensor([0] + list(num_list)).to(device)
         print(self.num_list)
@@ -211,6 +212,8 @@ class Classifier(nn.Module):
             [d_model, 1], reshape=True, use_bias=True)
 
         self.node_embedding = node_embedding
+        # print('node_embedding', node_embedding)
+
         self.encode1 = EncoderLayer(
             n_head,
             d_model,
@@ -232,6 +235,7 @@ class Classifier(nn.Module):
         # print(torch.max(x), torch.min(x))
 
         x, recon_loss = self.node_embedding(x.view(-1))
+        print('x', x.shape, x)
         if return_recon:
             return x.view(sz_b, len_seq, -1), recon_loss
         else:
@@ -274,6 +278,10 @@ class Classifier(nn.Module):
             dynamic, static, attn, recon_loss = self.get_embedding(x, slf_attn_mask, non_pad_mask, return_recon)
         else:
             dynamic, static, attn = self.get_embedding(x, slf_attn_mask, non_pad_mask, return_recon)
+
+        # print(dynamic, torch.isnan(dynamic).any())
+        # print(static, torch.isnan(static).any())
+
         dynamic = self.layer_norm1(dynamic)
         static = self.layer_norm2(static)
         sz_b, len_seq, dim = dynamic.shape

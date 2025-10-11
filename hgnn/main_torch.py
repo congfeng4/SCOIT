@@ -1,3 +1,4 @@
+from torch import isnan
 from torch.nn.utils.rnn import pad_sequence
 from torchsummary import summary
 from gensim.models import Word2Vec
@@ -108,7 +109,6 @@ def parse_args():
 def train_batch_hyperedge(model, loss_func, batch_data, batch_weight, type, y=""):
     x = batch_data
     w = batch_weight
-
     # When label is not generated, prepare the data
     if len(y) == 0:
         x, y, w = generate_negative(x, "train_dict", type, w)
@@ -116,6 +116,8 @@ def train_batch_hyperedge(model, loss_func, batch_data, batch_weight, type, y=""
         x, y, w = x[index], y[index], w[index]
 
     # forward
+    # print('x', isnan(x).any())
+
     pred, recon_loss = model(x, return_recon=True)
     loss = loss_func(pred, y, weight=w)
     return pred, y, loss, recon_loss
@@ -578,7 +580,6 @@ if __name__ == '__main__':
     if args.feature == 'adj':
         embeddings_initial = generate_embeddings(train_data, num, H=None, weight=train_weight)
 
-    print(train_weight)
     print(train_weight, np.min(train_weight), np.max(train_weight))
     train_weight_mean = np.mean(train_weight)
     train_weight = train_weight / train_weight_mean * neg_num
@@ -693,6 +694,7 @@ if __name__ == '__main__':
     elif args.feature == 'adj':
         flag = False
 
+        # print('embeddings_initial', embeddings_initial)
         node_embedding = MultipleEmbedding(
             embeddings_initial,
             bottle_neck,
