@@ -10,3 +10,8 @@ logs
 /data
 *.png
 /hypergraph
+*.npy
+/checkpoints/
+/embeddings/
+*.png
+walks/

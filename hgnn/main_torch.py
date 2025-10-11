@@ -179,6 +179,7 @@ def train_epoch(args, model, loss_func, training_data, optimizer, batch_size, on
     batch_num = int(math.floor(len(edges) / batch_size))
     bar = trange(batch_num, mininterval=0.1, desc='  - (Training) ', leave=False, )
     for i in bar:
+        print('only_rw', only_rw, 'alpha', alpha)
         if only_rw or alpha > 0:
             examples, labels, neg_samples, epoch_finished, words = sentences.next_batch()
             examples = torch.tensor(examples, dtype=torch.long, device=device)
@@ -445,9 +446,8 @@ def generate_negative(x, dict1, get_type='all', weight="", forward=True):
 
     x = np2tensor_hyper(new_x, dtype=torch.long)
     neg = np2tensor_hyper(neg_list, dtype=torch.long)
-    # print('x', type(x), 'neg', type(neg))
-    x = pad_sequence(x, batch_first=True, padding_value=0).to(device)
-    neg = pad_sequence(neg, batch_first=True, padding_value=0).to(device)
+    x = pad_sequence(x if isinstance(x, list) else [x], batch_first=True, padding_value=0).to(device).squeeze()
+    neg = pad_sequence(neg if isinstance(neg, list) else [neg], batch_first=True, padding_value=0).to(device).squeeze()
     # print("x", x, "neg", neg)
 
     return torch.cat([x, neg]), torch.cat(
@@ -556,8 +556,8 @@ if __name__ == '__main__':
     pair_ratio = 0.9
     train_type = 'hyper'
 
-    train_zip = np.load("./hypergraph/%s/train_data.npz" % (args.data), allow_pickle=True)
-    test_zip = np.load("./hypergraph/%s/test_data.npz" % (args.data), allow_pickle=True)
+    train_zip = np.load("../hypergraph/%s/train_data.npz" % (args.data), allow_pickle=True)
+    test_zip = np.load("../hypergraph/%s/test_data.npz" % (args.data), allow_pickle=True)
     train_data, test_data = train_zip['train_data'], test_zip['test_data']
 
     try:
@@ -718,7 +718,7 @@ if __name__ == '__main__':
     loss = F.binary_cross_entropy
     loss2 = torch.nn.BCEWithLogitsLoss(reduction='sum')
 
-    # summary(classifier_model, (3,))
+    summary(classifier_model, (3,))
 
     sentences = Word2Vec_Skipgram_Data_Empty()
 
