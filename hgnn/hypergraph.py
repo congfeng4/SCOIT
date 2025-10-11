@@ -5,8 +5,6 @@ import time
 from dataclasses import dataclass
 import json
 
-from tunits import Pa
-
 
 def robust_zscore(x):
     med = np.median(x)

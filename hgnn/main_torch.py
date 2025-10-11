@@ -445,6 +445,7 @@ def generate_negative(x, dict1, get_type='all', weight="", forward=True):
 
     x = np2tensor_hyper(new_x, dtype=torch.long)
     neg = np2tensor_hyper(neg_list, dtype=torch.long)
+    # print('x', type(x), 'neg', type(neg))
     x = pad_sequence(x, batch_first=True, padding_value=0).to(device)
     neg = pad_sequence(neg, batch_first=True, padding_value=0).to(device)
     # print("x", x, "neg", neg)
@@ -717,7 +718,7 @@ if __name__ == '__main__':
     loss = F.binary_cross_entropy
     loss2 = torch.nn.BCEWithLogitsLoss(reduction='sum')
 
-    summary(classifier_model, (3,))
+    # summary(classifier_model, (3,))
 
     sentences = Word2Vec_Skipgram_Data_Empty()
 
