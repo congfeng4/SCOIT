@@ -9,12 +9,8 @@ import time
 import argparse
 import warnings
 
-try:
-    from random_walk import random_walk
-    from random_walk_hyper import random_walk_hyper
-except ImportError:
-    pass
-
+from random_walk import random_walk
+from random_walk_hyper import random_walk_hyper
 from Modules import *
 from utils import *
 
@@ -80,7 +76,8 @@ def parse_args():
         '-f',
         '--feature',
         type=str,
-        default='walk',
+        default='adj',
+        choices=('walk', 'adj'),
         help='Features used in the first step')
 
     args = parser.parse_args()
@@ -548,193 +545,195 @@ def get_adjacency(data, norm=True):
     return csr_matrix(A).astype('float32')
 
 
-args = parse_args()
-neg_num = 5
-batch_size = 96
-neg_num_w2v = 5
-bottle_neck = args.dimensions
-pair_ratio = 0.9
-train_type = 'hyper'
+if __name__ == '__main__':
 
-train_zip = np.load("./hypergraph/%s/train_data.npz" % (args.data), allow_pickle=True)
-test_zip = np.load("./hypergraph/%s/test_data.npz" % (args.data), allow_pickle=True)
-train_data, test_data = train_zip['train_data'], test_zip['test_data']
+    args = parse_args()
+    neg_num = 5
+    batch_size = 96
+    neg_num_w2v = 5
+    bottle_neck = args.dimensions
+    pair_ratio = 0.9
+    train_type = 'hyper'
 
-try:
-    train_weight, test_weight = train_zip["train_weight"].astype('float32'), test_zip["test_weight"].astype('float32')
-except BaseException:
-    print("no specific train weight")
-    test_weight = np.ones(len(test_data), dtype='float32')
-    train_weight = np.ones(len(train_data), dtype='float32') * neg_num
+    train_zip = np.load("./hypergraph/%s/train_data.npz" % (args.data), allow_pickle=True)
+    test_zip = np.load("./hypergraph/%s/test_data.npz" % (args.data), allow_pickle=True)
+    train_data, test_data = train_zip['train_data'], test_zip['test_data']
 
-num = train_zip['nums_type']
-num_list = np.cumsum(num)
-print("Node type num", num)
+    try:
+        train_weight, test_weight = train_zip["train_weight"].astype('float32'), test_zip["test_weight"].astype(
+            'float32')
+    except BaseException:
+        print("no specific train weight")
+        test_weight = np.ones(len(test_data), dtype='float32')
+        train_weight = np.ones(len(train_data), dtype='float32') * neg_num
 
-if len(num) > 1:
-    node_type_mapping = [0, 1, 2]
+    num = train_zip['nums_type']
+    num_list = np.cumsum(num)
+    print("Node type num", num)
 
-if args.feature == 'adj':
-    embeddings_initial = generate_embeddings(train_data, num, H=None, weight=train_weight)
+    if len(num) > 1:
+        node_type_mapping = [0, 1, 2]
 
-print(train_weight)
-print(train_weight, np.min(train_weight), np.max(train_weight))
-train_weight_mean = np.mean(train_weight)
-train_weight = train_weight / train_weight_mean * neg_num
-test_weight = test_weight / train_weight_mean * neg_num
+    if args.feature == 'adj':
+        embeddings_initial = generate_embeddings(train_data, num, H=None, weight=train_weight)
 
-# Now for multiple node types, the first column id starts at 0, the second
-# starts at num_list[0]...
-if len(num) > 1:
-    for i in range(len(node_type_mapping) - 1):
-        train_data[:, i + 1] += num_list[node_type_mapping[i + 1] - 1]
-        test_data[:, i + 1] += num_list[node_type_mapping[i + 1] - 1]
+    print(train_weight)
+    print(train_weight, np.min(train_weight), np.max(train_weight))
+    train_weight_mean = np.mean(train_weight)
+    train_weight = train_weight / train_weight_mean * neg_num
+    test_weight = test_weight / train_weight_mean * neg_num
 
-num = torch.as_tensor(num)
-num_list = torch.as_tensor(num_list)
+    # Now for multiple node types, the first column id starts at 0, the second
+    # starts at num_list[0]...
+    if len(num) > 1:
+        for i in range(len(node_type_mapping) - 1):
+            train_data[:, i + 1] += num_list[node_type_mapping[i + 1] - 1]
+            test_data[:, i + 1] += num_list[node_type_mapping[i + 1] - 1]
 
-print("walk type", args.walk)
-# At this stage, the index still starts from zero
+    num = torch.as_tensor(num)
+    num_list = torch.as_tensor(num_list)
 
-node_list = np.arange(num_list[-1]).astype('int')
-if args.walk == 'hyper':
-    walk_path = random_walk_hyper(args, node_list, train_data)
-else:
-    walk_path = random_walk(args, num, train_data)
-del node_list
+    print("walk type", args.walk)
+    # At this stage, the index still starts from zero
 
-# Add 1 for the padding index
-print("adding pad idx")
-train_data = add_padding_idx(train_data)
-test_data = add_padding_idx(test_data)
-
-# Note that, no matter how many node types are here, make sure the
-# hyperedge (N1,N2,N3,...) has id, N1 < N2 < N3...
-train_dict = parallel_build_hash(train_data, "build_hash", args, num, initial=set())
-test_dict = parallel_build_hash(test_data, "build_hash", args, num, initial=train_dict)
-print("dict_size", len(train_dict), len(test_dict))
-
-# dict2 = build_hash2(train_data)
-# pos_edges = list(dict2)
-# pos_edges = np.array(pos_edges)
-# np.random.shuffle(pos_edges)
-
-print("train data amount", len(train_data))
-# potential_outliers = build_hash3(np.concatenate((train_data, test), axis=0))
-# potential_outliers = np.array(list(potential_outliers))
-
-
-if args.feature == 'walk':
-    # Note that for this part, the word2vec still takes sentences with
-    # words starts at "0"
-    if not args.TRY and os.path.exists(
-            "../%s_wv_%d_%s.npy" %
-            (args.data, args.dimensions, args.walk)):
-        A = np.load(
-            "../%s_wv_%d_%s.npy" %
-            (args.data,
-             args.dimensions,
-             args.walk),
-            allow_pickle=True)
+    node_list = np.arange(num_list[-1]).astype('int')
+    if args.walk == 'hyper':
+        walk_path = random_walk_hyper(args, node_list, train_data)
     else:
-        print("start loading")
-        walks = np.loadtxt(walk_path, delimiter=" ").astype('int')
-        start = time.time()
-        split_num = 20
-        pool = ProcessPoolExecutor(max_workers=split_num)
-        process_list = []
-        walks = np.array_split(walks, split_num)
+        walk_path = random_walk(args, num, train_data)
+    del node_list
 
-        result = []
-        print("Start turning path to strs")
-        for walk in walks:
-            process_list.append(pool.submit(walkpath2str, walk))
+    # Add 1 for the padding index
+    print("adding pad idx")
+    train_data = add_padding_idx(train_data)
+    test_data = add_padding_idx(test_data)
 
-        for p in as_completed(process_list):
-            result += p.result()
+    # Note that, no matter how many node types are here, make sure the
+    # hyperedge (N1,N2,N3,...) has id, N1 < N2 < N3...
+    train_dict = parallel_build_hash(train_data, "build_hash", args, num, initial=set())
+    test_dict = parallel_build_hash(test_data, "build_hash", args, num, initial=train_dict)
+    print("dict_size", len(train_dict), len(test_dict))
 
-        pool.shutdown(wait=True)
+    # dict2 = build_hash2(train_data)
+    # pos_edges = list(dict2)
+    # pos_edges = np.array(pos_edges)
+    # np.random.shuffle(pos_edges)
 
-        walks = result
-        print(
-            "Finishing Loading and processing %.2f s" %
-            (time.time() - start))
-        print("Start Word2vec")
-        import multiprocessing
+    print("train data amount", len(train_data))
+    # potential_outliers = build_hash3(np.concatenate((train_data, test), axis=0))
+    # potential_outliers = np.array(list(potential_outliers))
 
-        print("num cpu cores", multiprocessing.cpu_count())
-        w2v = Word2Vec(
-            walks,
-            size=args.dimensions,
-            window=args.window_size,
-            min_count=0,
-            sg=1,
-            iter=1,
-            workers=multiprocessing.cpu_count())
-        wv = w2v.wv
-        A = [wv[str(i)] for i in range(num_list[-1])]
-        np.save("../%s_wv_%d_%s.npy" %
-                (args.data, args.dimensions, args.walk), A)
+    if args.feature == 'walk':
+        # Note that for this part, the word2vec still takes sentences with
+        # words starts at "0"
+        if not args.TRY and os.path.exists(
+                "../%s_wv_%d_%s.npy" %
+                (args.data, args.dimensions, args.walk)):
+            A = np.load(
+                "../%s_wv_%d_%s.npy" %
+                (args.data,
+                 args.dimensions,
+                 args.walk),
+                allow_pickle=True)
+        else:
+            print("start loading")
+            walks = np.loadtxt(walk_path, delimiter=" ").astype('int')
+            start = time.time()
+            split_num = 20
+            pool = ProcessPoolExecutor(max_workers=split_num)
+            process_list = []
+            walks = np.array_split(walks, split_num)
 
-        from sklearn.preprocessing import StandardScaler
+            result = []
+            print("Start turning path to strs")
+            for walk in walks:
+                process_list.append(pool.submit(walkpath2str, walk))
 
-        A = StandardScaler().fit_transform(A)
+            for p in as_completed(process_list):
+                result += p.result()
 
-    A = np.concatenate(
-        (np.zeros((1, A.shape[-1]), dtype='float32'), A), axis=0)
-    A = A.astype('float32')
-    A = torch.tensor(A).to(device)
-    print(A.shape)
+            pool.shutdown(wait=True)
 
-    node_embedding = Wrap_Embedding(int(
-        num_list[-1] + 1), args.dimensions, scale_grad_by_freq=False, padding_idx=0, sparse=False)
-    node_embedding.weight = nn.Parameter(A)
+            walks = result
+            print(
+                "Finishing Loading and processing %.2f s" %
+                (time.time() - start))
+            print("Start Word2vec")
+            import multiprocessing
 
-elif args.feature == 'adj':
-    flag = False
+            print("num cpu cores", multiprocessing.cpu_count())
+            w2v = Word2Vec(
+                walks,
+                size=args.dimensions,
+                window=args.window_size,
+                min_count=0,
+                sg=1,
+                iter=1,
+                workers=multiprocessing.cpu_count())
+            wv = w2v.wv
+            A = [wv[str(i)] for i in range(num_list[-1])]
+            np.save("../%s_wv_%d_%s.npy" %
+                    (args.data, args.dimensions, args.walk), A)
 
-    node_embedding = MultipleEmbedding(
-        embeddings_initial,
-        bottle_neck,
-        flag,
-        num_list,
-        node_type_mapping).to(device)
+            from sklearn.preprocessing import StandardScaler
 
-classifier_model = Classifier(
-    n_head=8,
-    d_model=args.dimensions,
-    d_k=16,
-    d_v=16,
-    node_embedding=node_embedding,
-    diag_mask=args.diag,
-    bottle_neck=bottle_neck).to(device)
+            A = StandardScaler().fit_transform(A)
 
-save_embeddings(classifier_model, True)
+        A = np.concatenate(
+            (np.zeros((1, A.shape[-1]), dtype='float32'), A), axis=0)
+        A = A.astype('float32')
+        A = torch.tensor(A).to(device)
+        print(A.shape)
 
-Randomwalk_Word2vec = Word2vec_Skipgram(dict_size=int(num_list[-1] + 1), embedding_dim=args.dimensions,
-                                        window_size=args.window_size, u_embedding=node_embedding,
-                                        sparse=False).to(device)
+        node_embedding = Wrap_Embedding(int(
+            num_list[-1] + 1), args.dimensions, scale_grad_by_freq=False, padding_idx=0, sparse=False)
+        node_embedding.weight = nn.Parameter(A)
 
-loss = F.binary_cross_entropy
-loss2 = torch.nn.BCEWithLogitsLoss(reduction='sum')
+    elif args.feature == 'adj':
+        flag = False
 
-summary(classifier_model, (3,))
+        node_embedding = MultipleEmbedding(
+            embeddings_initial,
+            bottle_neck,
+            flag,
+            num_list,
+            node_type_mapping).to(device)
 
-sentences = Word2Vec_Skipgram_Data_Empty()
+    classifier_model = Classifier(
+        n_head=8,
+        d_model=args.dimensions,
+        d_k=16,
+        d_v=16,
+        node_embedding=node_embedding,
+        diag_mask=args.diag,
+        bottle_neck=bottle_neck).to(device)
 
-params_list = list(set(list(classifier_model.parameters()) + list(Randomwalk_Word2vec.parameters())))
+    save_embeddings(classifier_model, True)
 
-if args.feature == 'adj':
-    optimizer = torch.optim.Adam(params_list, lr=1e-3)
-else:
-    optimizer = torch.optim.RMSprop(params_list, lr=1e-3)
+    Randomwalk_Word2vec = Word2vec_Skipgram(dict_size=int(num_list[-1] + 1), embedding_dim=args.dimensions,
+                                            window_size=args.window_size, u_embedding=node_embedding,
+                                            sparse=False).to(device)
 
-model_parameters = filter(lambda p: p.requires_grad, params_list)
-params = sum([np.prod(p.size()) for p in model_parameters])
-print("params to be trained", params)
+    loss = F.binary_cross_entropy
+    loss2 = torch.nn.BCEWithLogitsLoss(reduction='sum')
 
-train(args, (classifier_model, Randomwalk_Word2vec),
-      loss=((loss, 1.0), (loss2, 0.0)),
-      training_data=(train_data, train_weight, sentences),
-      validation_data=(test_data, test_weight),
-      optimizer=[optimizer], epochs=300, batch_size=batch_size, only_rw=False)
+    summary(classifier_model, (3,))
+
+    sentences = Word2Vec_Skipgram_Data_Empty()
+
+    params_list = list(set(list(classifier_model.parameters()) + list(Randomwalk_Word2vec.parameters())))
+
+    if args.feature == 'adj':
+        optimizer = torch.optim.Adam(params_list, lr=1e-3)
+    else:
+        optimizer = torch.optim.RMSprop(params_list, lr=1e-3)
+
+    model_parameters = filter(lambda p: p.requires_grad, params_list)
+    params = sum([np.prod(p.size()) for p in model_parameters])
+    print("params to be trained", params)
+
+    train(args, (classifier_model, Randomwalk_Word2vec),
+          loss=((loss, 1.0), (loss2, 0.0)),
+          training_data=(train_data, train_weight, sentences),
+          validation_data=(test_data, test_weight),
+          optimizer=[optimizer], epochs=300, batch_size=batch_size, only_rw=False)

@@ -415,16 +415,16 @@ def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Pa
 
     from sklearn.model_selection import train_test_split
 
-    train_data, test_data, train_weights, test_weights = train_test_split(edges_data, edges_weight,
+    train_data, test_data, train_weight, test_weight = train_test_split(edges_data, edges_weight,
                                                                           train_size=train_size)
 
-    print('train_data', train_data.shape, 'train_weights', train_weights.shape,
-          'test_data', test_data.shape, 'test_weights', test_weights.shape)
+    print('train_data', train_data.shape, 'train_weight', train_weight.shape,
+          'test_data', test_data.shape, 'test_weight', test_weight.shape)
 
     save_dir = Path(save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
-    np.savez(save_dir / 'train_data.npz', train_data=train_data, train_weights=train_weights,
+    np.savez(save_dir / 'train_data.npz', train_data=train_data, train_weight=train_weight,
              nums_type=nums_type)
-    np.savez(save_dir / 'test_data.npz', test_data=test_data, test_weights=test_weights,
+    np.savez(save_dir / 'test_data.npz', test_data=test_data, test_weight=test_weight,
              nums_type=nums_type)
     print('Save to', save_dir)
