@@ -4,6 +4,7 @@ import pandas as pd
 import time
 from dataclasses import dataclass
 import json
+from collections import Counter, defaultdict
 
 
 def robust_zscore(x):
@@ -366,6 +367,7 @@ def load_graph(dir_path: Path, for_test=False) -> HyperGraph:
         graph = HyperGraph(nodes=nodes, edges=edges, metadata=metadata)
     else:
         graph = HyperGraph(nodes=df_nodes, edges=df_edges, metadata=metadata)
+        assert check_isolated_nodes(graph)
 
     print('Metadata:', metadata)
     return graph
@@ -420,6 +422,7 @@ def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Pa
         print('Train set only! No test set!')
         np.savez(save_dir / 'train_data.npz', train_data=edges_data, train_weight=edges_weight,
                  nums_type=nums_type)
+        assert check_hypergraph_isolated_nodes(edges_data, nums_type)
         print('Save to', save_dir)
         return
 
@@ -432,27 +435,42 @@ def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Pa
           'test_data', test_data.shape, 'test_weight', test_weight.shape)
 
 
+    assert check_hypergraph_isolated_nodes(train_data, nums_type)
     np.savez(save_dir / 'train_data.npz', train_data=train_data, train_weight=train_weight,
              nums_type=nums_type)
+
+    assert check_hypergraph_isolated_nodes(test_data, nums_type)
     np.savez(save_dir / 'test_data.npz', test_data=test_data, test_weight=test_weight,
              nums_type=nums_type)
     print('Save to', save_dir)
 
 
-def check_hypergraph_isolated_nodes(E: np.array):
-    from collections import Counter
+def check_isolated_nodes(hg: HyperGraph):
+    node_in_edges = set(hg.edges.values.reshape(-1))
+    total_nodes = set(range(hg.num_nodes))
+    isolated_nodes = total_nodes - node_in_edges
+    if isolated_nodes:
+        print('Detected isolated ndoes', isolated_nodes)
+    return not isolated_nodes
 
-    node_in_edges = [Counter() for _ in range(E.shape[1])] # 3 node types.
+
+def check_hypergraph_isolated_nodes(E: np.array, nums_type: np.array):
+    # nums_type: how many nodes for each type.
+
+    node_in_edges = defaultdict(set)
     for i in range(E.shape[0]): # All edges.
         for j in range(E.shape[1]): # Each node in an edge.
-            node_in_edges[j][E[i, j]] += 1 # One edge mentions this node.
+            node_in_edges[j].add([E[i, j]]) # One edge mentions this node.
 
     # If no edge or just one edge mentions a node, then the node is isolated (no neighbours).
-    ok = True
-    for node_type, edges in node_in_edges:
-        isolated_nodes = [nid for nid, edge_count in edges.items() if edge_count < 2]
-        if isolated_nodes:
-            print('Node type', node_type, 'has isolated nodes', isolated_nodes)
-            ok = False
+    isolated_nodes = []
+    for node_type, num_nodes in enumerate(nums_type):
+        all_nodes = set(range(num_nodes))
+        isolated_nodes_ = all_nodes - node_in_edges[node_type]
+        if isolated_nodes_:
+            isolated_nodes.extend([(node_type, nid) for nid in isolated_nodes_])
 
-    return ok
+    if isolated_nodes:
+        print('Detected isolated_nodes', isolated_nodes)
+
+    return not isolated_nodes

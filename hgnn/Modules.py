@@ -74,6 +74,7 @@ class TiedAutoEncoder(nn.Module):
     def __init__(self, inp, out):
         super().__init__()
         self.weight = nn.parameter.Parameter(torch.Tensor(out, inp))
+        print('inp', inp, 'out', out, 'weight.shape', self.weight.shape)
         self.bias1 = nn.parameter.Parameter(torch.Tensor(out))
         self.bias2 = nn.parameter.Parameter(torch.Tensor(inp))
 
@@ -87,6 +88,7 @@ class TiedAutoEncoder(nn.Module):
         torch.nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
         if self.bias1 is not None:
             fan_in, _ = torch.nn.init._calculate_fan_in_and_fan_out(self.weight)
+            print('fan_in', fan_in, math.sqrt(fan_in))
             bound = 1 / math.sqrt(fan_in)
             torch.nn.init.uniform_(self.bias1, -bound, bound)
 
@@ -120,6 +122,7 @@ class MultipleEmbedding(nn.Module):
         self.embeddings = []
         for i, w in enumerate(embedding_weights):
             try:
+                print('w.shape', w.shape)
                 self.embeddings.append(SparseEmbedding(w, sparse))
             except BaseException as e:
                 print("Conv Embedding Mode")
@@ -130,6 +133,7 @@ class MultipleEmbedding(nn.Module):
         self.input_size = []
         for w in self.embeddings:
             self.input_size.append(w(test).shape[-1])
+        print('self.input_size', self.input_size)
 
         self.wstack = [TiedAutoEncoder(self.input_size[i], self.dim).to(device) for i, w in enumerate(self.embeddings)]
         self.norm_stack = [nn.LayerNorm(self.dim).to(device) for w in self.embeddings]

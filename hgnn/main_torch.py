@@ -507,13 +507,16 @@ def generate_embeddings(edge, nums_type, H=None, weight=1):
     if H is None:
         H = generate_H(edge, nums_type, weight)
 
-    np.savez('../H.npz', H=H)
-    print('Save H')
+    print('H.shape', [x.shape for x in H])
+    # np.savez('../H.npz', H=H)
+    # print('Save H')
 
     embeddings = [H[i].dot(s_vstack([H[j] for j in range(len(num))]).T).astype('float32') for i in
                   range(len(nums_type))]
-    np.savez('../embeddings.npz', embeddings=embeddings)
-    print('Save embed')
+    print('embeddings.shape', [x.shape for x in embeddings])
+
+    # np.savez('../embeddings.npz', embeddings=embeddings)
+    # print('Save embed')
 
     new_embeddings = []
     zero_num_list = [0] + list(num_list)
@@ -533,6 +536,7 @@ def generate_embeddings(edge, nums_type, H=None, weight=1):
         col_max = np.array(new_embeddings[i].max(0).todense()).flatten()
         _, col_index = new_embeddings[i].nonzero()
         new_embeddings[i].data /= col_max[col_index]
+
     return [new_embeddings[i] for i in range(len(nums_type))]
 
 
@@ -592,7 +596,7 @@ if __name__ == '__main__':
         def csr_has_nan(x):
             return np.isnan(x.data).any()
 
-        print('embeddings_initial', [csr_has_nan(x) for x in embeddings_initial])
+        print('embeddings_initial', [x.shape for x in embeddings_initial])
 
     print(train_weight)
     print(train_weight, np.min(train_weight), np.max(train_weight))
