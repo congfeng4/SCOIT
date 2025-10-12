@@ -578,7 +578,8 @@ if __name__ == '__main__':
     train_data, test_data = train_zip['train_data'], test_zip['test_data']
 
     try:
-        train_weight, test_weight = train_zip["train_weight"].astype('float32'), test_zip["test_weight"].astype('float32')
+        # train_weight, test_weight = train_zip["train_weight"].astype('float32'), test_zip["test_weight"].astype('float32')
+        raise BaseException
     except BaseException:
         print("no specific train weight")
         test_weight = np.ones(len(test_data), dtype='float32')

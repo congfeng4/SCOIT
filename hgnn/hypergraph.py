@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass
 import json
 from collections import Counter, defaultdict
+from typing import Union
 
 
 def robust_zscore(x):
@@ -252,6 +253,8 @@ class HyperGraphCreator:
             df_edges = self.construct_hyper_edge_fast()
         else:
             df_edges = self.construct_hyper_edge()
+
+        assert check_isolated_nodes(df_edges, num_nodes=self.num_nodes)
         print('Construct edges done, time:', time.time() - begin)
 
         self.save_metadata_and_edges(df_edges)
@@ -445,9 +448,19 @@ def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Pa
     print('Save to', save_dir)
 
 
-def check_isolated_nodes(hg: HyperGraph):
-    node_in_edges = set(hg.edges.values.reshape(-1))
-    total_nodes = set(range(hg.num_nodes))
+def check_isolated_nodes(hg: Union[HyperGraph, pd.DataFrame, np.ndarray],
+                          num_nodes: int = None, nums_type: np.array = None):
+    if isinstance(hg, HyperGraph):
+        node_in_edges = set(hg.edges.values.reshape(-1))
+        total_nodes = set(range(hg.num_nodes))
+    elif isinstance(hg, pd.DataFrame): # Edge Df
+        assert num_nodes, num_nodes
+        node_in_edges = set(hg.values.reshape(-1))
+        total_nodes = set(range(num_nodes))
+    elif isinstance(hg, np.ndarray):  # Hyper-SAGNN format
+        assert nums_type, nums_type
+        return check_hypergraph_isolated_nodes(hg, nums_type)
+
     isolated_nodes = total_nodes - node_in_edges
     if isolated_nodes:
         print('Detected isolated ndoes', isolated_nodes)
@@ -460,7 +473,7 @@ def check_hypergraph_isolated_nodes(E: np.array, nums_type: np.array):
     node_in_edges = defaultdict(set)
     for i in range(E.shape[0]): # All edges.
         for j in range(E.shape[1]): # Each node in an edge.
-            node_in_edges[j].add([E[i, j]]) # One edge mentions this node.
+            node_in_edges[j].add(E[i, j]) # One edge mentions this node.
 
     # If no edge or just one edge mentions a node, then the node is isolated (no neighbours).
     isolated_nodes = []

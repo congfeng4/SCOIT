@@ -163,7 +163,7 @@ class MultipleEmbedding(nn.Module):
 
 def sparse_autoencoder_error(y_pred, y_true):
     # print('sparse_autoencoder_error', torch.sum(
-        # y_true.ne(0).type(torch.float), dim=-1))
+    #     y_true.ne(0).type(torch.float), dim=-1))
 
     return torch.mean(torch.sum((y_true.ne(0).type(torch.float) * (y_true - y_pred)) ** 2, dim=-1) / torch.sum(
         y_true.ne(0).type(torch.float), dim=-1))
