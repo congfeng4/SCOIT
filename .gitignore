@@ -11,7 +11,8 @@ logs
 *.png
 /hypergraph
 *.npy
-/checkpoints/
-/embeddings/
+/checkpoints
+/embeddings
 *.png
-walks/
+/walks
+/data*
