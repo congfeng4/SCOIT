@@ -395,6 +395,8 @@ def load_graph_metadata(dir_path: Path):
 
 
 def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Path):
+    assert 0 <= train_size <=1, train_size
+
     edges = hg.edges
     metadata = hg.metadata
 
@@ -411,6 +413,16 @@ def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Pa
     edges_weight = df['Weight'].values
     print('num_edges', edges_data.shape[0])
 
+    save_dir = Path(save_dir)
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    if train_size == 1:
+        print('Train set only! No test set!')
+        np.savez(save_dir / 'train_data.npz', train_data=edges_data, train_weight=edges_weight,
+                 nums_type=nums_type)
+        print('Save to', save_dir)
+        return
+
     from sklearn.model_selection import train_test_split
 
     train_data, test_data, train_weight, test_weight = train_test_split(edges_data, edges_weight,
@@ -419,10 +431,28 @@ def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Pa
     print('train_data', train_data.shape, 'train_weight', train_weight.shape,
           'test_data', test_data.shape, 'test_weight', test_weight.shape)
 
-    save_dir = Path(save_dir)
-    save_dir.mkdir(parents=True, exist_ok=True)
+
     np.savez(save_dir / 'train_data.npz', train_data=train_data, train_weight=train_weight,
              nums_type=nums_type)
     np.savez(save_dir / 'test_data.npz', test_data=test_data, test_weight=test_weight,
              nums_type=nums_type)
     print('Save to', save_dir)
+
+
+def check_hypergraph_isolated_nodes(E: np.array):
+    from collections import Counter
+
+    node_in_edges = [Counter() for _ in range(E.shape[1])] # 3 node types.
+    for i in range(E.shape[0]): # All edges.
+        for j in range(E.shape[1]): # Each node in an edge.
+            node_in_edges[j][E[i, j]] += 1 # One edge mentions this node.
+
+    # If no edge or just one edge mentions a node, then the node is isolated (no neighbours).
+    ok = True
+    for node_type, edges in node_in_edges:
+        isolated_nodes = [nid for nid, edge_count in edges.items() if edge_count < 2]
+        if isolated_nodes:
+            print('Node type', node_type, 'has isolated nodes', isolated_nodes)
+            ok = False
+
+    return ok

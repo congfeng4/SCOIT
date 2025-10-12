@@ -16,3 +16,4 @@ logs
 *.png
 /walks
 /data*
+*.npz

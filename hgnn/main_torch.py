@@ -507,13 +507,13 @@ def generate_embeddings(edge, nums_type, H=None, weight=1):
     if H is None:
         H = generate_H(edge, nums_type, weight)
 
-    # np.savez('../H.npz', H=H)
-    # print('Save H')
+    np.savez('../H.npz', H=H)
+    print('Save H')
 
     embeddings = [H[i].dot(s_vstack([H[j] for j in range(len(num))]).T).astype('float32') for i in
                   range(len(nums_type))]
-    # np.savez('../embeddings.npz', embeddings=embeddings)
-    # print('Save embed')
+    np.savez('../embeddings.npz', embeddings=embeddings)
+    print('Save embed')
 
     new_embeddings = []
     zero_num_list = [0] + list(num_list)
