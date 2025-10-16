@@ -30,10 +30,12 @@ class HyperGraphCreator:
     Each omics data is a CSV file with rows as cells and columns as genes.
     The cell_key is the column name of cell identifiers, which should be present in all files
     and will be used to join the dataframes.
+
+    Note: filter_edge=True will cause isolated ndoes, which may prevent training!!
     """
 
     def __init__(self, multi_omics_data: dict[str, Path], cell_key: str, dataname: str,
-                 prefix: Path, filter_edge=True, fast_edge=True, pickle=False,
+                 prefix: Path, filter_edge=False, fast_edge=True, pickle=False,
                  read_csv_args: dict = {}):
         """
         Initialize the HyperGraphCreator with processing parameters.

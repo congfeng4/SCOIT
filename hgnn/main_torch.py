@@ -87,6 +87,13 @@ def parse_args():
         default=50,
         help='How many epochs to train'
     )
+    parser.add_argument(
+        '-b',
+        '--batch_size',
+        type=int,
+        default=96,
+        help='Batch size'
+    )
     args = parser.parse_args()
 
     if not args.random_walk:
@@ -567,7 +574,7 @@ if __name__ == '__main__':
 
     args = parse_args()
     neg_num = 5
-    batch_size = 96
+    batch_size = args.batch_size
     neg_num_w2v = 5
     bottle_neck = args.dimensions
     pair_ratio = 0.9
