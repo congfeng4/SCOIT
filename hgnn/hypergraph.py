@@ -224,6 +224,7 @@ class HyperGraphCreator:
             'omics_offset': self.omics_offset,
             'gene_offset': self.gene_offset,
             'cell_offset': self.cell_offset,
+            'omics_dims': [len(df.columns) for df in self.multi_omics_df.values()],
             'raw_data': {k: str(v) for k, v in self.multi_omics_data.items()},
             'cell_key': self.cell_key,
         }
@@ -331,14 +332,22 @@ class HyperGraph:
     def num_edges(self):
         return len(self.edges)
 
+    @property
+    def num_cells(self):
+        return self.metadata['num_cells']
+
     def __str__(self):
         return f'HyperGraph(num_nodes={self.num_nodes}, num_edges={self.num_edges})'
 
     def __repr__(self):
         return str(self.metadata)
 
+    @property
+    def cell_names(self):
+        return self.nodes['Name'][self.metadata['cell_offset'] + np.arange(self.num_cells)]
 
-def load_graph(dir_path: Path, for_test=False) -> HyperGraph:
+
+def load_graph(dir_path: Path, for_test=False, load_edges=True) -> HyperGraph:
     """
     Load a hypergraph from a directory.
     The directory should contain 'nodes.csv', 'edges.csv' (or 'edges.pkl'),
@@ -352,27 +361,31 @@ def load_graph(dir_path: Path, for_test=False) -> HyperGraph:
     with open(dir_path / 'metadata.json', 'r') as f:
         metadata = json.load(f)
 
-    begin = time.time()
-    try:
-        df_edges = pd.read_csv(dir_path / 'edges.csv')
-    except FileNotFoundError:
-        df_edges = pd.read_pickle(dir_path / 'edges.pkl')
-    print(f'Load edges in {time.time() - begin:.2f} seconds.')
+    if load_edges:
+        begin = time.time()
+        try:
+            df_edges = pd.read_csv(dir_path / 'edges.csv')
+        except FileNotFoundError:
+            df_edges = pd.read_pickle(dir_path / 'edges.pkl')
+        print(f'Load edges in {time.time() - begin:.2f} seconds.')
+    else:
+        df_edges = None
+        print('load_edges=False')
 
     begin = time.time()
     df_nodes = pd.read_csv(dir_path / 'nodes.csv', index_col=0)
     print(f'Load nodes in {time.time() - begin:.2f} seconds.')
+    print(f'Num nodes: {len(df_nodes)}, Num edges: {len(df_edges) if df_edges else 0}')
 
-    print(f'Num nodes: {len(df_nodes)}, Num edges: {len(df_edges)}')
-
-    if for_test:
+    if for_test and load_edges:
         nodes = [HyperNode(id=i, type=row.Type, name=row.Name) for i, row in df_nodes.iterrows()]
         edges = [HyperEdge(id=i, nodes=list(map(int, [row.Omics, row.Gene, row.Cell])), weight=float(row.Weight))
                  for i, row in df_edges.iterrows()]
         graph = HyperGraph(nodes=nodes, edges=edges, metadata=metadata)
     else:
         graph = HyperGraph(nodes=df_nodes, edges=df_edges, metadata=metadata)
-        assert check_isolated_nodes(graph)
+        if load_edges:
+            assert check_isolated_nodes(graph)
 
     print('Metadata:', metadata)
     return graph

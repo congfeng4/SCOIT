@@ -52,7 +52,7 @@ def parse_args():
     parser.add_argument('-k', '--window-size', type=int, default=10,
                         help='Context size for optimization. Default is 10.')
 
-    parser.add_argument('-i', '--iter', default=1, type=int,
+    parser.add_argument('-i', '--iter', default=30, type=int,
                         help='Number of epochs in SGD')
 
     parser.add_argument('--workers', type=int, default=8,
@@ -81,17 +81,10 @@ def parse_args():
         help='Features used in the first step')
 
     parser.add_argument(
-        '-e',
-        '--epochs',
-        type=int,
-        default=50,
-        help='How many epochs to train'
-    )
-    parser.add_argument(
         '-b',
         '--batch_size',
         type=int,
-        default=96,
+        default=1024,
         help='Batch size'
     )
     args = parser.parse_args()
@@ -768,4 +761,4 @@ if __name__ == '__main__':
           loss=((loss, 1.0), (loss2, 0.0)),
           training_data=(train_data, train_weight, sentences),
           validation_data=(test_data, test_weight),
-          optimizer=[optimizer], epochs=args.epochs, batch_size=batch_size, only_rw=False) # epochs=300
+          optimizer=[optimizer], epochs=args.iter, batch_size=batch_size, only_rw=False)
