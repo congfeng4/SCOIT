@@ -17,3 +17,4 @@ logs
 /walks
 /data*
 *.npz
+tb_logs

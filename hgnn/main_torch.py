@@ -1,3 +1,4 @@
+import glob
 from torch.nn.utils.rnn import pad_sequence
 from torchsummary import summary
 from gensim.models import Word2Vec
@@ -15,6 +16,7 @@ from Modules import *
 from utils import *
 
 import matplotlib as mpl
+from torch.utils.tensorboard import SummaryWriter
 
 mpl.use("Agg")
 import multiprocessing
@@ -304,6 +306,14 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
 
         bce_loss, skipgram_loss, recon_loss, train_accu, auc1, auc2 = train_epoch(
             args, model, loss, training_data, optimizer, batch_size, only_rw, train_type)
+
+        tb_logger.add_scalars('Training', dict(bce_loss=bce_loss,
+            skipgram_loss=skipgram_loss,
+            recon_loss=recon_loss,
+            accu=train_accu,
+            auc1=auc1,
+            auc2=auc2), global_step=epoch_i)
+
         print('  - (Training)   bce: {bce_loss: 7.4f}, skipgram: {skipgram_loss: 7.4f}, '
               'recon: {recon_loss: 7.4f}'
               ' acc: {accu:3.3f} %, auc: {auc1:3.3f}, aupr: {auc2:3.3f}, '
@@ -311,8 +321,7 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
             bce_loss=bce_loss,
             skipgram_loss=skipgram_loss,
             recon_loss=recon_loss,
-            accu=100 *
-                 train_accu,
+            accu=train_accu,
             auc1=auc1,
             auc2=auc2,
             elapse=(time.time() - start)))
@@ -321,6 +330,14 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
         valid_bce_loss, recon_loss, valid_accu, valid_auc1, valid_auc2 = eval_epoch(args, model[0], loss,
                                                                                     validation_data, batch_size,
                                                                                     'hyper')
+        tb_logger.add_scalars("Validation-hyper", dict(
+            bce_loss=valid_bce_loss,
+            recon_loss=recon_loss,
+            accu=100 * valid_accu,
+            auc1=valid_auc1,
+            auc2=valid_auc2,
+        ),  global_step=epoch_i)
+
         print('  - (Validation-hyper) bce: {bce_loss: 7.4f}, recon: {recon_loss: 7.4f},'
               '  acc: {accu:3.3f} %,'
               ' auc: {auc1:3.3f}, aupr: {auc2:3.3f}, '
@@ -353,7 +370,7 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
         checkpoint = torch.load(os.path.join(args.save_path, model_name))
         model[0].load_state_dict(checkpoint['model_link'])
         model[1].load_state_dict(checkpoint['model_node2vec'])
-        save_embeddings(model[0], origin=True)
+        # save_embeddings(model[0], origin=True) # Don't save here, use the best validation version.
 
 
 def generate_negative(x, dict1, get_type='all', weight="", forward=True):
@@ -379,11 +396,13 @@ def generate_negative(x, dict1, get_type='all', weight="", forward=True):
     if len(x.shape) > 1:
         change_list_all = np.random.randint(
             0, x.shape[-1], len(x) * neg_num).reshape((len(x), neg_num))
+
     for j, sample in enumerate(func1(x)):
         if len(x.shape) > 1:
             change_list = change_list_all[j, :]
         else:
             change_list = np.random.randint(0, sample.shape[-1], neg_num)
+
         for i in range(neg_num):
             temp = np.copy(sample)
             a = set()
@@ -414,7 +433,6 @@ def generate_negative(x, dict1, get_type='all', weight="", forward=True):
                         temp[change] = np.random.randint(
                             int(start), int(end), 1) + 1
                 else:
-
                     if len(num_list) == 1:
                         # Only one node type
                         temp = np.random.randint(
@@ -434,6 +452,7 @@ def generate_negative(x, dict1, get_type='all', weight="", forward=True):
                 neg_list.append(temp)
                 if i == 0:
                     new_index.append(j)
+
     if get_type == 'all' or get_type == 'edge':
         x_e, neg_e = generate_negative_edge(x, int(len(x)))
         if get_type == 'all':
@@ -442,6 +461,7 @@ def generate_negative(x, dict1, get_type='all', weight="", forward=True):
         else:
             x = x_e
             neg_list = neg_e
+
     new_index = np.array(new_index)
     new_x = x[new_index]
 
@@ -564,6 +584,7 @@ def get_adjacency(data, norm=True):
 
 
 if __name__ == '__main__':
+    global tb_logger
 
     args = parse_args()
     neg_num = 5
@@ -578,10 +599,13 @@ if __name__ == '__main__':
     train_data, test_data = train_zip['train_data'], test_zip['test_data']
 
     try:
-        # train_weight, test_weight = train_zip["train_weight"].astype('float32'), test_zip["test_weight"].astype('float32')
-        raise BaseException
+        if args.feature == 'adj':
+            raise BaseException
+        else:  # args.feature == 'walk'
+            train_weight, test_weight = train_zip["train_weight"].astype('float32'), test_zip["test_weight"].astype('float32')
+            # Only try to use train_weight when the feature is walk.
     except BaseException:
-        print("no specific train weight")
+        print(f"no specific train weight, feature is {args.feature}")
         test_weight = np.ones(len(test_data), dtype='float32')
         train_weight = np.ones(len(train_data), dtype='float32') * neg_num
 
@@ -597,15 +621,15 @@ if __name__ == '__main__':
         def csr_has_nan(x):
             return np.isnan(x.data).any()
 
-        print('embeddings_initial', [x.shape for x in embeddings_initial])
+        # print('embeddings_initial', [x.shape for x in embeddings_initial])
 
-    print(train_weight)
+    # print(train_weight)
     print(train_weight, np.min(train_weight), np.max(train_weight))
     train_weight_mean = np.mean(train_weight)
     train_weight = train_weight / train_weight_mean * neg_num
     test_weight = test_weight / train_weight_mean * neg_num
-    print('train_weight', np.isnan(train_weight).any())
-    print('test_weight', np.isnan(test_weight).any())
+    # print('train_weight', np.isnan(train_weight).any())
+    # print('test_weight', np.isnan(test_weight).any())
 
     # Now for multiple node types, the first column id starts at 0, the second
     # starts at num_list[0]...
@@ -756,6 +780,8 @@ if __name__ == '__main__':
     model_parameters = filter(lambda p: p.requires_grad, params_list)
     params = sum([np.prod(p.size()) for p in model_parameters])
     print("params to be trained", params)
+
+    tb_logger = SummaryWriter(f'./tb_logs/{args.data}-{args.feature}')
 
     train(args, (classifier_model, Randomwalk_Word2vec),
           loss=((loss, 1.0), (loss2, 0.0)),
