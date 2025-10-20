@@ -602,7 +602,8 @@ if __name__ == '__main__':
         if args.feature == 'adj':
             raise BaseException
         else:  # args.feature == 'walk'
-            train_weight, test_weight = train_zip["train_weight"].astype('float32'), test_zip["test_weight"].astype('float32')
+            raise BaseException
+            # train_weight, test_weight = train_zip["train_weight"].astype('float32'), test_zip["test_weight"].astype('float32')
             # Only try to use train_weight when the feature is walk.
     except BaseException:
         print(f"no specific train weight, feature is {args.feature}")
