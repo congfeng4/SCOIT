@@ -1,3 +1,4 @@
+from datetime import datetime
 import glob
 
 import numpy as np
@@ -90,7 +91,7 @@ def parse_args():
         '-b',
         '--batch_size',
         type=int,
-        default=1024,
+        default=96,
         help='Batch size'
     )
     parser.add_argument(
@@ -306,7 +307,7 @@ def eval_epoch(args, model, loss_func, validation_data, batch_size, type):
             batch_w = validation_weight[i * batch_size:(i + 1) * batch_size]
 
             if len(y) == 0:
-                print('generate_negative...')
+                # print('generate_negative...')
                 # TODO: This is really slow.
                 batch_x, batch_y, batch_w = generate_negative(
                     batch_x, "test_dict", type, weight=batch_w)
@@ -519,7 +520,7 @@ def generate_negative(x, dict1, get_type='all', weight="", forward=True):
     # print("x", x.shape, "neg", neg.shape)
 
     # x, y, w
-    correction = 1.0 if args.loss == "classification" else 0.0 # from higashi.
+    correction = 1.0 if args.loss == "bce" else 0.0 # from higashi.
     return torch.cat([x, neg]), \
         torch.cat([torch.ones((len(x), 1), device=device), torch.zeros((len(neg), 1), device=device)], dim=0), \
         torch.cat([torch.ones((len(x), 1), device=device) * new_weight.view(-1, 1),
@@ -829,7 +830,7 @@ if __name__ == '__main__':
     params = sum([np.prod(p.size()) for p in model_parameters])
     print("params to be trained", params)
 
-    tb_logger = SummaryWriter(f'./tb_logs/{args.data}-{args.feature}')
+    tb_logger = SummaryWriter(f'./tb_logs/{args.data}-{args.feature}-{args.loss}-{datetime.now()}')
 
     train(args, (classifier_model, Randomwalk_Word2vec),
           loss=((loss, 1.0), (loss2, 0.0)),
