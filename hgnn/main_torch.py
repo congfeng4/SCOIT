@@ -98,10 +98,11 @@ def parse_args():
         '-m',
         '--loss',
         type=str,
-        choices=('bce', 'mse', 'zinb', 'rank', 'gauss'),
+        choices=('bce', 'mse', 'zinb', 'rank', 'gauss', 'nb'),
         help='Loss type',
     )
     parser.add_argument('--max_workers', '-p', type=int, default=4)
+    parser.add_argument('--no_eval', type=bool, default=True)
     args = parser.parse_args()
 
     if not args.random_walk:
@@ -149,7 +150,7 @@ def train_batch_hyperedge(model, loss_func, batch_data, batch_weight, type, y=""
         diff = diff[mask_rank].float()
         diff_w = diff_w[mask_rank]
         label = (diff_w > 0).float()
-        main_loss = F.binary_cross_entropy_with_logits(diff, label)
+        main_loss = F.binary_cross_entropy_with_logits(diff, label, weight=w)
     elif args.loss == 'zinb':
         pred = F.softplus(pred)
         pred_var = F.softplus(pred_var)
@@ -163,6 +164,12 @@ def train_batch_hyperedge(model, loss_func, batch_data, batch_weight, type, y=""
         pred = pred.float().view(-1)
         w = w.float().view(-1)
         main_loss = F.mse_loss(pred, w)
+    elif args.loss == 'nb':
+        pred = F.softplus(pred)
+        pred_var = F.softplus(pred_var)
+        pred = torch.clamp(pred, min=1e-8, max=1e8)
+        pred_var = torch.clamp(pred_var, min=1e-8, max=1e8)
+        main_loss = negative_binomial_log_likelihood(w.float(), pred.float(), pred_var)
     else:
         print("wrong mode", args.loss)
         raise ValueError(args.loss)
@@ -338,6 +345,7 @@ def eval_epoch(args, model, loss_func, validation_data, batch_size, type):
 def train(args, model, loss, training_data, validation_data, optimizer, epochs, batch_size, only_rw):
     valid_accus = [0]
     # outlier_data = generate_outlier()
+    model_name = 'model.chkpt'
 
     for epoch_i in range(epochs):
         if only_rw:
@@ -370,6 +378,10 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
             str2=str2,
             elapse=(time.time() - start)))
 
+        if args.no_eval:
+            save_embeddings(model[0], origin=True)
+            continue
+
         start = time.time()
         valid_bce_loss, recon_loss, valid_auc1, valid_auc2, str1, str2 = eval_epoch(args, model[0], loss,
                                                                                     validation_data, batch_size,
@@ -398,8 +410,6 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
             'model_link': model[0].state_dict(),
             'model_node2vec': model[1].state_dict(),
             'epoch': epoch_i}
-
-        model_name = 'model.chkpt'
 
         if valid_auc1 >= max(valid_accus):
             torch.save(checkpoint, os.path.join(args.save_path, model_name))
@@ -843,7 +853,7 @@ if __name__ == '__main__':
     thread_pool = ThreadPoolExecutor(max_workers=args.max_workers)
 
     print('batch size', args.batch_size)
-    
+
     train(args, (classifier_model, Randomwalk_Word2vec),
           loss=((loss, 1.0), (loss2, 0.0)),
           training_data=(train_data, train_weight, sentences),

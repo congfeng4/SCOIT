@@ -12,6 +12,33 @@ device_ids = [0, 1]
 import torch
 import torch.nn.functional as F
 
+import torch
+import torch.nn.functional as F
+
+def negative_binomial_log_likelihood(x, mu, theta, eps=1e-8):
+    """
+    计算负二项分布的对数似然损失函数。
+
+    参数：
+    x      -- 观测计数数据，形状为 [batch_size, n_features]
+    mu     -- 预测均值，形状同 x
+    theta  -- 离散度参数（dispersion），形状同 x 或广播兼容
+    eps    -- 数值稳定性常数
+
+    返回：
+    每个样本的负对数似然损失，形状为 [batch_size, n_features]
+    """
+    log_theta_mu = torch.log(theta + mu + eps)
+    log_mu = torch.log(mu + eps)
+    log_theta = torch.log(theta + eps)
+
+    term1 = torch.lgamma(x + theta) - torch.lgamma(theta) - torch.lgamma(x + 1)
+    term2 = theta * (log_theta - log_theta_mu)
+    term3 = x * (log_mu - log_theta_mu)
+
+    log_prob = term1 + term2 + term3
+    return -log_prob  # 返回负对数似然
+
 
 def log_gaussian_positive(x: torch.Tensor, mu: torch.Tensor, log_var: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
     """
