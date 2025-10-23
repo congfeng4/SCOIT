@@ -72,3 +72,50 @@ def RunLeiden(adj_matrix):
         labels[part[i]] = i
 
     return list(labels)
+
+
+from sklearn.metrics import normalized_mutual_info_score # NMI
+from sklearn.metrics import adjusted_rand_score # ARI
+from sklearn.metrics import fowlkes_mallows_score # FMI
+from scipy.optimize import linear_sum_assignment
+from sklearn.preprocessing import LabelEncoder
+from sklearn.cluster import KMeans
+
+
+def align_cluster(cluster_ids, y):
+    kc = len(np.unique(cluster_ids))
+    ky = len(np.unique(y))
+    # ---------- 3. build cost matrix ----------
+    contingency = np.zeros((kc, ky), dtype=int)
+    for c, gt in zip(cluster_ids, y):
+        contingency[c, gt] += 1
+
+    # cost = number of mismatches if we map cluster c -> class j
+    cost_matrix = contingency.max() - contingency        # or: -contingency
+
+    # ---------- 4. Hungarian ----------
+    row_ind, col_ind = linear_sum_assignment(cost_matrix)   # same API as old linear_assignment
+
+    # ---------- 5. remap ----------
+    # build a dictionary  old_label -> new_label
+    mapping = dict(zip(row_ind, col_ind))
+    y_pred_aligned = np.vectorize(mapping.get)(cluster_ids)
+    return y_pred_aligned
+
+
+def compute_clustering_metrics(y_true, y_pred):
+    y_pred_aligned = align_cluster(y_pred, y_true)
+    return dict(
+        NMI = normalized_mutual_info_score(y_true, y_pred_aligned),
+        ARI = adjusted_rand_score(y_true, y_pred_aligned),
+        FMI = fowlkes_mallows_score(y_true, y_pred_aligned),
+    )
+
+
+def cluster_evaluate(cell_embeddings, cell_labels):
+    label_encoder = LabelEncoder()
+    y_true = label_encoder.fit_transform(cell_labels)
+    km = KMeans(n_clusters=len(label_encoder.classes_))
+    km.fit(cell_embeddings)
+    y_pred = km.labels_
+    return compute_clustering_metrics(y_true, y_pred)

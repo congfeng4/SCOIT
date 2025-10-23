@@ -1,4 +1,7 @@
 import glob
+
+import numpy as np
+import pandas as pd
 from torch.nn.utils.rnn import pad_sequence
 from torchsummary import summary
 from gensim.models import Word2Vec
@@ -13,6 +16,7 @@ import warnings
 from random_walk import random_walk
 from random_walk_hyper import random_walk_hyper
 from Modules import *
+from scoit.cell_analysis import cluster_evaluate
 from utils import *
 
 import matplotlib as mpl
@@ -89,6 +93,13 @@ def parse_args():
         default=1024,
         help='Batch size'
     )
+    parser.add_argument(
+        '-m',
+        '--loss',
+        type=str,
+        choices=('bce', 'mse', 'zinb', 'rank', 'gauss'),
+        help='Loss type',
+    )
     args = parser.parse_args()
 
     if not args.random_walk:
@@ -125,9 +136,36 @@ def train_batch_hyperedge(model, loss_func, batch_data, batch_weight, type, y=""
         x, y, w = x[index], y[index], w[index]
 
     # forward
-    pred, recon_loss = model(x, return_recon=True)
-    loss = loss_func(pred, y, weight=w)
-    return pred, y, loss, recon_loss
+    pred, pred_var, pred_proba = model(x, return_recon=False, )
+    if args.loss == 'bce':
+        main_loss = F.binary_cross_entropy_with_logits(pred, y, weight=w)
+    elif args.loss == 'rank':
+        pred = F.softplus(pred)
+        diff = (pred.view(-1, 1) - pred.view(1, -1)).view(-1)
+        diff_w = (w.view(-1, 1) - w.view(1, -1)).view(-1)
+        mask_rank = torch.abs(diff_w) > args.rank_thres
+        diff = diff[mask_rank].float()
+        diff_w = diff_w[mask_rank]
+        label = (diff_w > 0).float()
+        main_loss = F.binary_cross_entropy_with_logits(diff, label)
+    elif args.loss == 'zinb':
+        pred = F.softplus(pred)
+        pred_var = F.softplus(pred_var)
+        pred = torch.clamp(pred, min=1e-8, max=1e8)
+        pred_var = torch.clamp(pred_var, min=1e-8, max=1e8)
+        main_loss = -log_zinb_positive(w.float(), pred.float(), pred_var.float(), pred_proba.float())
+        main_loss = main_loss.mean()
+    elif args.loss == 'gauss':
+        main_loss = log_gaussian_positive(w.float(), pred.float(), pred_var)
+    elif args.loss == 'mse':  # Regression
+        pred = pred.float().view(-1)
+        w = w.float().view(-1)
+        main_loss = F.mse_loss(pred, w)
+    else:
+        print("wrong mode", args.loss)
+        raise ValueError(args.loss)
+
+    return pred, y, main_loss, #recon_loss
 
 
 def train_batch_skipgram(model, loss_func, alpha, batch_data):
@@ -183,7 +221,7 @@ def train_epoch(args, model, loss_func, training_data, optimizer, batch_size, on
     bce_total_loss = 0
     skipgram_total_loss = 0
     recon_total_loss = 0
-    acc_list, y_list, pred_list = [], [], []
+    acc_list, y_list, w_list, pred_list = [], [], [], []
 
     batch_num = int(math.floor(len(edges) / batch_size))
     bar = trange(batch_num, mininterval=0.1, desc='  - (Training) ', leave=False, )
@@ -209,12 +247,13 @@ def train_epoch(args, model, loss_func, training_data, optimizer, batch_size, on
                 if len(batch_y) == 0:
                     continue
 
-            pred, batch_y, loss_bce, loss_recon = train_batch_hyperedge(model_1, loss_1, batch_edge, batch_edge_weight,
+            pred, batch_y, loss_bce = train_batch_hyperedge(model_1, loss_1, batch_edge, batch_edge_weight,
                                                                         type, y=batch_y)
             loss_skipgram = torch.Tensor([0.0]).to(device)
-            loss = beta * loss_bce + alpha * loss_skipgram + loss_recon * args.rw
+            loss = beta * loss_bce + alpha * loss_skipgram #+ loss_recon * args.rw
             acc_list.append(accuracy(pred, batch_y))
             y_list.append(batch_y)
+            w_list.append(batch_edge_weight.detach().cpu())
             pred_list.append(pred)
 
         for opt in optimizer:
@@ -231,10 +270,11 @@ def train_epoch(args, model, loss_func, training_data, optimizer, batch_size, on
                             (bce_total_loss / (i + 1), skipgram_total_loss / (i + 1), recon_total_loss / (i + 1)))
         bce_total_loss += loss_bce.item()
         skipgram_total_loss += loss_skipgram.item()
-        recon_total_loss += loss_recon.item()
+        #recon_total_loss += loss_recon.item()
     y = torch.cat(y_list)
+    w = torch.cat(w_list)
     pred = torch.cat(pred_list)
-    auc1, auc2 = roc_auc_cuda(y, pred)
+    auc1, auc2 = roc_auc_cuda(w, pred)
     return bce_total_loss / batch_num, skipgram_total_loss / batch_num, recon_total_loss / batch_num, np.mean(
         acc_list), auc1, auc2
 
@@ -257,7 +297,7 @@ def eval_epoch(args, model, loss_func, validation_data, batch_size, type):
         if len(y) > 0:
             y = y[index]
 
-        pred, label = [], []
+        pred, label, w_list = [], [], []
 
         for i in tqdm(range(int(math.floor(len(validation_data) / batch_size))),
                       mininterval=0.1, desc='  - (Validation)   ', leave=False):
@@ -277,6 +317,7 @@ def eval_epoch(args, model, loss_func, validation_data, batch_size, type):
             pred_batch, recon_loss = model(batch_x, return_recon=True)
             pred.append(pred_batch)
             label.append(batch_y)
+            w_list.append(batch_w)
 
             loss = loss_func(pred_batch, batch_y, weight=batch_w)
             recon_total_loss += recon_loss.item()
@@ -284,12 +325,11 @@ def eval_epoch(args, model, loss_func, validation_data, batch_size, type):
 
         pred = torch.cat(pred, dim=0)
         label = torch.cat(label, dim=0)
+        w = torch.cat(w_list, dim=0)
 
-        acc = accuracy(pred, label)
+        auc1, auc2 = roc_auc_cuda(w, pred)
 
-        auc1, auc2 = roc_auc_cuda(label, pred)
-
-    return bce_total_loss / (i + 1), recon_total_loss / (i + 1), acc, auc1, auc2
+    return bce_total_loss / (i + 1), recon_total_loss / (i + 1), auc1, auc2
 
 
 def train(args, model, loss, training_data, validation_data, optimizer, epochs, batch_size, only_rw):
@@ -308,11 +348,11 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
             args, model, loss, training_data, optimizer, batch_size, only_rw, train_type)
 
         tb_logger.add_scalars('Training', dict(bce_loss=bce_loss,
-            skipgram_loss=skipgram_loss,
-            recon_loss=recon_loss,
-            accu=train_accu,
-            auc1=auc1,
-            auc2=auc2), global_step=epoch_i)
+                                               skipgram_loss=skipgram_loss,
+                                               recon_loss=recon_loss,
+                                               accu=train_accu,
+                                               auc1=auc1,
+                                               auc2=auc2), global_step=epoch_i)
 
         print('  - (Training)   bce: {bce_loss: 7.4f}, skipgram: {skipgram_loss: 7.4f}, '
               'recon: {recon_loss: 7.4f}'
@@ -327,25 +367,21 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
             elapse=(time.time() - start)))
 
         start = time.time()
-        valid_bce_loss, recon_loss, valid_accu, valid_auc1, valid_auc2 = eval_epoch(args, model[0], loss,
+        valid_bce_loss, recon_loss, valid_auc1, valid_auc2 = eval_epoch(args, model[0], loss,
                                                                                     validation_data, batch_size,
                                                                                     'hyper')
         tb_logger.add_scalars("Validation-hyper", dict(
             bce_loss=valid_bce_loss,
             recon_loss=recon_loss,
-            accu=100 * valid_accu,
             auc1=valid_auc1,
             auc2=valid_auc2,
-        ),  global_step=epoch_i)
+        ), global_step=epoch_i)
 
         print('  - (Validation-hyper) bce: {bce_loss: 7.4f}, recon: {recon_loss: 7.4f},'
-              '  acc: {accu:3.3f} %,'
               ' auc: {auc1:3.3f}, aupr: {auc2:3.3f}, '
               'elapse: {elapse:3.3f} s'.format(
             bce_loss=valid_bce_loss,
             recon_loss=recon_loss,
-            accu=100 *
-                 valid_accu,
             auc1=valid_auc1,
             auc2=valid_auc2,
             elapse=(time.time() - start)))
@@ -363,6 +399,10 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
         if valid_auc1 >= max(valid_accus):
             torch.save(checkpoint, os.path.join(args.save_path, model_name))
             save_embeddings(model[0], origin=True)
+            cell_embeddings = np.load("../mymodel_0.npy", allow_pickle=True)
+            cell_labels = pd.read_csv(f"../data/{args.data}/cell_stage.csv", header=None)[0]
+            metrics = cluster_evaluate(cell_embeddings, cell_labels)
+            tb_logger.add_scalars("Validation-cluster", metrics, global_step=epoch_i)
 
         torch.cuda.empty_cache()
 
@@ -478,9 +518,12 @@ def generate_negative(x, dict1, get_type='all', weight="", forward=True):
     neg = pad_sequence(neg if isinstance(neg, list) else [neg], batch_first=True, padding_value=0).to(device).squeeze()
     # print("x", x.shape, "neg", neg.shape)
 
-    return torch.cat([x, neg]), torch.cat(
-        [torch.ones((len(x), 1), device=device), torch.zeros((len(neg), 1), device=device)], dim=0), torch.cat(
-        ((torch.ones((len(x), 1), device=device) * new_weight.view(-1, 1), (torch.ones((len(neg), 1), device=device)))))
+    # x, y, w
+    correction = 1.0 if args.loss == "classification" else 0.0 # from higashi.
+    return torch.cat([x, neg]), \
+        torch.cat([torch.ones((len(x), 1), device=device), torch.zeros((len(neg), 1), device=device)], dim=0), \
+        torch.cat([torch.ones((len(x), 1), device=device) * new_weight.view(-1, 1),
+                   torch.ones((len(neg), 1), device=device) * correction])
 
 
 def save_embeddings(model, origin=False):
@@ -603,7 +646,8 @@ if __name__ == '__main__':
             raise BaseException
         else:  # args.feature == 'walk'
             # raise BaseException
-            train_weight, test_weight = train_zip["train_weight"].astype('float32'), test_zip["test_weight"].astype('float32')
+            train_weight, test_weight = train_zip["train_weight"].astype('float32'), test_zip["test_weight"].astype(
+                'float32')
             # Only try to use train_weight when the feature is walk.
     except BaseException:
         print(f"no specific train weight, feature is {args.feature}")
@@ -619,6 +663,8 @@ if __name__ == '__main__':
 
     if args.feature == 'adj':
         embeddings_initial = generate_embeddings(train_data, num, H=None, weight=train_weight)
+
+
         def csr_has_nan(x):
             return np.isnan(x.data).any()
 

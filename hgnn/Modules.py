@@ -9,6 +9,83 @@ import math
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device_ids = [0, 1]
 
+import torch
+import torch.nn.functional as F
+
+
+def log_gaussian_positive(x: torch.Tensor, mu: torch.Tensor, log_var: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
+    """
+    计算小批量样本的高斯分布负对数似然损失（逐元素）。
+
+    参数：
+    x        -- 输入数据，形状为 [batch_size, n_features]
+    mu       -- 预测的均值，形状同 x
+    log_var  -- 预测的 log(方差)，形状同 x
+    eps      -- 数值稳定性常数，防止除零或 log(0)
+
+    返回：
+    每个样本-特征对的负对数似然值，形状为 [batch_size, n_features]
+    """
+    var = torch.exp(log_var) + eps
+    log_std = 0.5 * log_var
+    two_pi = torch.tensor(2.0 * 3.141592653589793, device=x.device)
+
+    nll = 0.5 * torch.log(two_pi) + log_std + 0.5 * ((x - mu) ** 2) / var
+    return nll
+
+
+# Code adapted from scVI
+def log_zinb_positive(
+        x: torch.Tensor, mu: torch.Tensor, theta: torch.Tensor, pi: torch.Tensor, eps=1e-8
+):
+    """
+    Log likelihood (scalar) of a minibatch according to a zinb model.
+
+    Parameters
+    ----------
+    x
+        Data
+    mu
+        mean of the negative binomial (has to be positive support) (shape: minibatch x vars)
+    theta
+        inverse dispersion parameter (has to be positive support) (shape: minibatch x vars)
+    pi
+        logit of the dropout parameter (real support) (shape: minibatch x vars)
+    eps
+        numerical stability constant
+
+    Notes
+    -----
+    We parametrize the bernoulli using the logits, hence the softplus functions appearing.
+    """
+    # theta is the dispersion rate. If .ndimension() == 1, it is shared for all cells (regardless of batch or labels)
+    # if theta.ndimension() == 1:
+    #     theta = theta.view(
+    #         1, theta.size(0)
+    #     )  # In this case, we reshape theta for broadcasting
+
+    softplus_pi = F.softplus(-pi)  # uses log(sigmoid(x)) = -softplus(-x)
+    log_theta_eps = torch.log(theta + eps)
+    log_theta_mu_eps = torch.log(theta + mu + eps)
+    pi_theta_log = -pi + theta * (log_theta_eps - log_theta_mu_eps)
+
+    case_zero = F.softplus(pi_theta_log) - softplus_pi
+    mul_case_zero = torch.mul((x < eps).type(torch.float32), case_zero)
+
+    case_non_zero = (
+            -softplus_pi
+            + pi_theta_log
+            + x * (torch.log(mu + eps) - log_theta_mu_eps)
+            + torch.lgamma(x + theta)
+            - torch.lgamma(theta)
+            - torch.lgamma(x + 1)
+    )
+    mul_case_non_zero = torch.mul((x > eps).type(torch.float32), case_non_zero)
+
+    res = mul_case_zero + mul_case_non_zero
+
+    return res
+
 
 def get_non_pad_mask(seq):
     assert seq.dim() == 2
@@ -216,6 +293,10 @@ class Classifier(nn.Module):
 
         self.pff_classifier = PositionwiseFeedForward(
             [d_model, 1], reshape=True, use_bias=True)
+        self.pff_classifier_var = PositionwiseFeedForward(
+            [d_model, int(d_model / 2), 1])
+        self.pff_classifier_proba = PositionwiseFeedForward(
+            [d_model, int(d_model / 2), 1])
 
         self.node_embedding = node_embedding
         self.encode1 = EncoderLayer(
@@ -275,6 +356,10 @@ class Classifier(nn.Module):
     def forward(self, x, mask=None, get_outlier=None, return_recon=False):
         x = x.long()
 
+        distance_proba = torch.zeros((len(x), 1), dtype=torch.float, device=device)
+        distance_proba2 = torch.zeros((len(x), 1), dtype=torch.float, device=device)
+        distance_proba3 = torch.zeros((len(x), 1), dtype=torch.float, device=device)
+
         slf_attn_mask = get_attn_key_pad_mask(seq_k=x, seq_q=x)
         non_pad_mask = get_non_pad_mask(x)
 
@@ -284,46 +369,32 @@ class Classifier(nn.Module):
             dynamic, static, attn = self.get_embedding(x, slf_attn_mask, non_pad_mask, return_recon)
         dynamic = self.layer_norm1(dynamic)
         static = self.layer_norm2(static)
-        sz_b, len_seq, dim = dynamic.shape
 
-        if self.diag_mask_flag == 'True':
+        if self.diag_mask_flag:
             output = (dynamic - static) ** 2
         else:
             output = dynamic
 
-        output = self.pff_classifier(output)
-        output = torch.sigmoid(output)
+        output_proba = self.pff_classifier_proba(static)
+        # output_proba = torch.sum(output_proba * non_pad_mask, dim=-2, keepdim=False)
+        # mask_sum = torch.sum(non_pad_mask, dim=-2, keepdim=False)
+        # output_proba /= mask_sum
+        output_proba = torch.mean(output_proba, dim=-2, keepdim=False)
+        output_proba = output_proba + distance_proba
 
-        if get_outlier is not None:
-            k = get_outlier
-            outlier = (
-                    (1 -
-                     output) *
-                    non_pad_mask).topk(
-                k,
-                dim=1,
-                largest=True,
-                sorted=True)[1]
-            return outlier.view(-1, k)
+        output_mean = self.pff_classifier(output)
+        # output_mean = torch.sum(output_mean * non_pad_mask, dim=-2, keepdim=False)
+        # output_mean /= mask_sum
+        output_mean = torch.mean(output_mean, dim=-2, keepdim=False)
 
-        mode = 'sum'
+        output_var = self.pff_classifier_var(static)
+        # output_var = torch.sum(output_var * non_pad_mask, dim=-2, keepdim=False)
+        # output_var /= mask_sum
+        output_var = torch.mean(output_var, dim=-2, keepdim=False)
+        output_mean = output_mean + distance_proba2
+        output_var = output_var + distance_proba3
 
-        if mode == 'min':
-            output, _ = torch.max(
-                (1 - output) * non_pad_mask, dim=-2, keepdim=False)
-            output = 1 - output
-
-        elif mode == 'sum':
-            output = torch.sum(output * non_pad_mask, dim=-2, keepdim=False)
-            mask_sum = torch.sum(non_pad_mask, dim=-2, keepdim=False)
-            output /= mask_sum
-        elif mode == 'first':
-            output = output[:, 0, :]
-
-        if return_recon:
-            return output, recon_loss
-        else:
-            return output
+        return output_mean, output_var, output_proba
 
 
 # A custom position-wise MLP.

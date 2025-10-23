@@ -375,7 +375,7 @@ def load_graph(dir_path: Path, for_test=False, load_edges=True) -> HyperGraph:
     begin = time.time()
     df_nodes = pd.read_csv(dir_path / 'nodes.csv', index_col=0)
     print(f'Load nodes in {time.time() - begin:.2f} seconds.')
-    print(f'Num nodes: {len(df_nodes)}, Num edges: {len(df_edges) if df_edges else 0}')
+    print(f'Num nodes: {len(df_nodes)}, Num edges: {len(df_edges) if df_edges is not None else "NaN"}')
 
     if for_test and load_edges:
         nodes = [HyperNode(id=i, type=row.Type, name=row.Name) for i, row in df_nodes.iterrows()]
