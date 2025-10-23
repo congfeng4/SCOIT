@@ -166,7 +166,7 @@ def train_batch_hyperedge(model, loss_func, batch_data, batch_weight, type, y=""
         print("wrong mode", args.loss)
         raise ValueError(args.loss)
 
-    return pred, y, main_loss, #recon_loss
+    return pred, y, w, main_loss, #recon_loss
 
 
 def train_batch_skipgram(model, loss_func, alpha, batch_data):
@@ -248,13 +248,13 @@ def train_epoch(args, model, loss_func, training_data, optimizer, batch_size, on
                 if len(batch_y) == 0:
                     continue
 
-            pred, batch_y, loss_bce = train_batch_hyperedge(model_1, loss_1, batch_edge, batch_edge_weight,
+            pred, batch_y, batch_w, loss_bce = train_batch_hyperedge(model_1, loss_1, batch_edge, batch_edge_weight,
                                                                         type, y=batch_y)
             loss_skipgram = torch.Tensor([0.0]).to(device)
             loss = beta * loss_bce + alpha * loss_skipgram #+ loss_recon * args.rw
             acc_list.append(accuracy(pred, batch_y))
             y_list.append(batch_y)
-            w_list.append(torch.tensor(batch_edge_weight))
+            w_list.append(batch_w)
             pred_list.append(pred)
 
         for opt in optimizer:
@@ -275,9 +275,9 @@ def train_epoch(args, model, loss_func, training_data, optimizer, batch_size, on
     y = torch.cat(y_list)
     w = torch.cat(w_list)
     pred = torch.cat(pred_list)
-    auc1, auc2 = roc_auc_cuda(w, pred)
+    auc1, auc2, str1, str2 = roc_auc_cuda(w, pred)
     return bce_total_loss / batch_num, skipgram_total_loss / batch_num, recon_total_loss / batch_num, np.mean(
-        acc_list), auc1, auc2
+        acc_list), auc1, auc2, str1, str2
 
 
 def eval_epoch(args, model, loss_func, validation_data, batch_size, type):
@@ -328,9 +328,9 @@ def eval_epoch(args, model, loss_func, validation_data, batch_size, type):
         label = torch.cat(label, dim=0)
         w = torch.cat(w_list, dim=0)
 
-        auc1, auc2 = roc_auc_cuda(w, pred)
+        auc1, auc2, str1, str2 = roc_auc_cuda(w, pred)
 
-    return bce_total_loss / (i + 1), recon_total_loss / (i + 1), auc1, auc2
+    return bce_total_loss / (i + 1), recon_total_loss / (i + 1), auc1, auc2, str1, str2
 
 
 def train(args, model, loss, training_data, validation_data, optimizer, epochs, batch_size, only_rw):
@@ -345,19 +345,18 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
 
         start = time.time()
 
-        bce_loss, skipgram_loss, recon_loss, train_accu, auc1, auc2 = train_epoch(
+        bce_loss, skipgram_loss, recon_loss, train_accu, auc1, auc2, str1, str2 = train_epoch(
             args, model, loss, training_data, optimizer, batch_size, only_rw, train_type)
 
         tb_logger.add_scalars('Training', dict(bce_loss=bce_loss,
                                                skipgram_loss=skipgram_loss,
-                                               recon_loss=recon_loss,
-                                               accu=train_accu,
-                                               auc1=auc1,
-                                               auc2=auc2), global_step=epoch_i)
+                                            #    recon_loss=recon_loss,
+                                               accu=train_accu, **{str1: auc1, str2: auc2},
+                                               ), global_step=epoch_i)
 
         print('  - (Training)   bce: {bce_loss: 7.4f}, skipgram: {skipgram_loss: 7.4f}, '
               'recon: {recon_loss: 7.4f}'
-              ' acc: {accu:3.3f} %, auc: {auc1:3.3f}, aupr: {auc2:3.3f}, '
+              ' acc: {accu:3.3f} %, {str1}: {auc1:3.3f}, {str2}: {auc2:3.3f}, '
               'elapse: {elapse:3.3f} s'.format(
             bce_loss=bce_loss,
             skipgram_loss=skipgram_loss,
@@ -365,26 +364,29 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
             accu=train_accu,
             auc1=auc1,
             auc2=auc2,
+            str1=str1,
+            str2=str2,
             elapse=(time.time() - start)))
 
         start = time.time()
-        valid_bce_loss, recon_loss, valid_auc1, valid_auc2 = eval_epoch(args, model[0], loss,
+        valid_bce_loss, recon_loss, valid_auc1, valid_auc2, str1, str2 = eval_epoch(args, model[0], loss,
                                                                                     validation_data, batch_size,
                                                                                     'hyper')
         tb_logger.add_scalars("Validation-hyper", dict(
             bce_loss=valid_bce_loss,
-            recon_loss=recon_loss,
-            auc1=valid_auc1,
-            auc2=valid_auc2,
+            # recon_loss=recon_loss,
+            **{str1: valid_auc1, str2: valid_auc2}
         ), global_step=epoch_i)
 
         print('  - (Validation-hyper) bce: {bce_loss: 7.4f}, recon: {recon_loss: 7.4f},'
-              ' auc: {auc1:3.3f}, aupr: {auc2:3.3f}, '
+              ' {str1}: {auc1:3.3f}, {str2}: {auc2:3.3f}, '
               'elapse: {elapse:3.3f} s'.format(
             bce_loss=valid_bce_loss,
             recon_loss=recon_loss,
             auc1=valid_auc1,
             auc2=valid_auc2,
+            str1=str1,
+            str2=str2,
             elapse=(time.time() - start)))
 
         valid_accus += [valid_auc1]
