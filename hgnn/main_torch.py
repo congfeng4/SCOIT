@@ -101,7 +101,7 @@ def parse_args():
         choices=('bce', 'mse', 'zinb', 'rank', 'gauss'),
         help='Loss type',
     )
-    parser.add_argument('--max_workers', '-w', type=int, default=4)
+    parser.add_argument('--max_workers', '-p', type=int, default=4)
     args = parser.parse_args()
 
     if not args.random_walk:
@@ -307,15 +307,13 @@ def eval_epoch(args, model, loss_func, validation_data, batch_size, type):
             batch_w = validation_weight[i * batch_size:(i + 1) * batch_size]
 
             if len(y) == 0:
-                # print('generate_negative...')
-                # TODO: This is really slow.
                 p = thread_pool.submit(generate_negative, batch_x, "test_dict", type, weight=batch_w)
                 p_list.append(p)
                 # batch_x, batch_y, batch_w = generate_negative(
             else:
                 batch_y = y[i * batch_size:(i + 1) * batch_size]
 
-        for res in tqdm(as_completed(p_list),
+        for res in tqdm(as_completed(p_list), total=len(p_list),
                       mininterval=0.1, desc='  - (Validation)   ', leave=False):
             batch_x, batch_y, batch_w = res.result()
             index = torch.randperm(len(batch_x))
@@ -353,7 +351,7 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
             args, model, loss, training_data, optimizer, batch_size, only_rw, train_type)
 
         tb_logger.add_scalars('Training', dict(bce_loss=bce_loss,
-                                               skipgram_loss=skipgram_loss,
+                                              # skipgram_loss=skipgram_loss,
                                             #    recon_loss=recon_loss,
                                                accu=train_accu, **{str1: auc1, str2: auc2},
                                                ), global_step=epoch_i)
@@ -577,13 +575,13 @@ def generate_embeddings(edge, nums_type, H=None, weight=1):
     if H is None:
         H = generate_H(edge, nums_type, weight)
 
-    print('H.shape', [x.shape for x in H])
+    # print('H.shape', [x.shape for x in H])
     # np.savez('./H.npz', H=H)
     # print('Save H')
 
     embeddings = [H[i].dot(s_vstack([H[j] for j in range(len(num))]).T).astype('float32') for i in
                   range(len(nums_type))]
-    print('embeddings.shape', [x.shape for x in embeddings])
+    # print('embeddings.shape', [x.shape for x in embeddings])
 
     # np.savez('./embeddings.npz', embeddings=embeddings)
     # print('Save embed')
@@ -636,6 +634,10 @@ def get_adjacency(data, norm=True):
 if __name__ == '__main__':
     global tb_logger
     global thread_pool
+
+    # import multiprocessing
+
+    # multiprocessing.set_start_method('spawn')
 
     args = parse_args()
     neg_num = 5
@@ -840,6 +842,8 @@ if __name__ == '__main__':
     tb_logger = SummaryWriter(f'./tb_logs/{args.data}-{args.feature}-{args.loss}-{datetime.now()}')
     thread_pool = ThreadPoolExecutor(max_workers=args.max_workers)
 
+    print('batch size', args.batch_size)
+    
     train(args, (classifier_model, Randomwalk_Word2vec),
           loss=((loss, 1.0), (loss2, 0.0)),
           training_data=(train_data, train_weight, sentences),

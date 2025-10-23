@@ -1,14 +1,15 @@
 dataname=sc_GEM
 feature=walk
 epochs=100
-loss=bce
+loss=zinb
+bs=96
 subdir="hgnn/${dataname}-${loss}"
 
 mkdir -p ./embeddings/${subdir}
 
 echo Begin to train ${subdir} for ${epochs} epochs
 
-python main_torch.py --data ${dataname} --feature ${feature} --iter ${epochs} --loss ${loss}
+python ./hgnn/main_torch.py --data ${dataname} --feature ${feature} --iter ${epochs} --loss ${loss} --batch_size=${bs}
 
 echo ${dataname} ends
 
