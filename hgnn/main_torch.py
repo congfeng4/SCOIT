@@ -253,7 +253,7 @@ def train_epoch(args, model, loss_func, training_data, optimizer, batch_size, on
             loss = beta * loss_bce + alpha * loss_skipgram #+ loss_recon * args.rw
             acc_list.append(accuracy(pred, batch_y))
             y_list.append(batch_y)
-            w_list.append(batch_edge_weight.detach().cpu())
+            w_list.append(torch.tensor(batch_edge_weight))
             pred_list.append(pred)
 
         for opt in optimizer:
@@ -306,6 +306,8 @@ def eval_epoch(args, model, loss_func, validation_data, batch_size, type):
             batch_w = validation_weight[i * batch_size:(i + 1) * batch_size]
 
             if len(y) == 0:
+                print('generate_negative...')
+                # TODO: This is really slow.
                 batch_x, batch_y, batch_w = generate_negative(
                     batch_x, "test_dict", type, weight=batch_w)
             else:
@@ -314,13 +316,11 @@ def eval_epoch(args, model, loss_func, validation_data, batch_size, type):
             index = torch.randperm(len(batch_x))
             batch_x, batch_y, batch_w = batch_x[index], batch_y[index], batch_w[index]
 
-            pred_batch, recon_loss = model(batch_x, return_recon=True)
+            pred_batch, *_, loss = train_batch_hyperedge(model, loss_func, batch_x, batch_w, type, batch_y)
             pred.append(pred_batch)
             label.append(batch_y)
             w_list.append(batch_w)
-
-            loss = loss_func(pred_batch, batch_y, weight=batch_w)
-            recon_total_loss += recon_loss.item()
+            # recon_total_loss += recon_loss.item()
             bce_total_loss += loss.item()
 
         pred = torch.cat(pred, dim=0)
@@ -400,7 +400,7 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
             torch.save(checkpoint, os.path.join(args.save_path, model_name))
             save_embeddings(model[0], origin=True)
             cell_embeddings = np.load("./mymodel_0.npy", allow_pickle=True)
-            cell_labels = pd.read_csv(f"./data/{args.data}/cell_stage.csv", header=None)[0]
+            cell_labels = np.array(pd.read_csv(f"data/{args.data}/cell_stage.csv", header=None))[0]
             metrics = cluster_evaluate(cell_embeddings, cell_labels)
             tb_logger.add_scalars("Validation-cluster", metrics, global_step=epoch_i)
 
@@ -649,6 +649,7 @@ if __name__ == '__main__':
             train_weight, test_weight = train_zip["train_weight"].astype('float32'), test_zip["test_weight"].astype(
                 'float32')
             # Only try to use train_weight when the feature is walk.
+            print("Use train_weight", train_weight.shape)
     except BaseException:
         print(f"no specific train weight, feature is {args.feature}")
         test_weight = np.ones(len(test_data), dtype='float32')
