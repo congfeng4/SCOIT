@@ -33,15 +33,24 @@ if __name__ == "__main__":
     print(data.shape)
 
     sc_model = sc_multi_omics()
-    predict_data = sc_model.fit_complete(data, pre_impute=False,
-                                 dist="negative_bionomial", n_epochs=5000, device=0)
+    # predict_data = sc_model.fit(data, dist="negative_bionomial", n_epochs=1000, device="cpu")
+    predict_data = sc_model.fit_complete(
+        data,
+        # pre_impute=False, # Does not affect loss nan or not.
+        # normalization=False, # Must be true or loss is nan.
+        dist="negative_bionomial",
+        lr=1e-2,
+        n_epochs=1000,  # original settting is 1000 but not converge.
+        lambda_C_regularizer=0.01,
+        lambda_G_regularizer=0.01,
+        lambda_O_regularizer=[0.01, 0.01],
+        lambda_OC_regularizer=[1, 1],
+        lambda_OG_regularizer=[1, 1],
+    )
 
     np.savetxt("cell_embeddings.csv", sc_model.C, delimiter=',')
     np.savetxt("gene_embeddings.csv", sc_model.G, delimiter=',')
     np.savetxt("omics_embeddings.csv", sc_model.O, delimiter=',')
-    np.savetxt("omics_gene_embeddings.csv", sc_model.OG, delimiter=',')
-    np.savetxt("omics_cell_embeddings.csv", sc_model.OC, delimiter=',')
-    np.savetxt("omics_embeddings.csv", sc_model.O, delimiter=',')
     np.savetxt("predict_data_expression.csv", predict_data[0])
     np.savetxt("predict_data_methylation.csv", predict_data[1])
-    print(time.time() - start_time)
+    print('time', time.time() - start_time)

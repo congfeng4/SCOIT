@@ -119,7 +119,7 @@ def parse_args():
     print(args.model_name)
 
     args.save_path = os.path.join(
-        '../checkpoints/', args.data, args.model_name)
+        './checkpoints/', args.data, args.model_name)
     if not os.path.exists(args.save_path):
         os.makedirs(args.save_path)
     return args
@@ -399,8 +399,8 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
         if valid_auc1 >= max(valid_accus):
             torch.save(checkpoint, os.path.join(args.save_path, model_name))
             save_embeddings(model[0], origin=True)
-            cell_embeddings = np.load("../mymodel_0.npy", allow_pickle=True)
-            cell_labels = pd.read_csv(f"../data/{args.data}/cell_stage.csv", header=None)[0]
+            cell_embeddings = np.load("./mymodel_0.npy", allow_pickle=True)
+            cell_labels = pd.read_csv(f"./data/{args.data}/cell_stage.csv", header=None)[0]
             metrics = cluster_evaluate(cell_embeddings, cell_labels)
             tb_logger.add_scalars("Validation-cluster", metrics, global_step=epoch_i)
 
@@ -545,10 +545,10 @@ def save_embeddings(model, origin=False):
         for i in range(len(num_list)):
             start = 0 if i == 0 else num_list[i - 1]
             static = embeddings[int(start):int(num_list[i])]
-            np.save("../mymodel_%d.npy" % (i), static)
+            np.save("./mymodel_%d.npy" % (i), static)
 
             if origin:
-                np.save("../mymodel_%d_origin.npy" % (i), static)
+                np.save("./mymodel_%d_origin.npy" % (i), static)
 
     torch.cuda.empty_cache()
     return embeddings
@@ -571,14 +571,14 @@ def generate_embeddings(edge, nums_type, H=None, weight=1):
         H = generate_H(edge, nums_type, weight)
 
     print('H.shape', [x.shape for x in H])
-    # np.savez('../H.npz', H=H)
+    # np.savez('./H.npz', H=H)
     # print('Save H')
 
     embeddings = [H[i].dot(s_vstack([H[j] for j in range(len(num))]).T).astype('float32') for i in
                   range(len(nums_type))]
     print('embeddings.shape', [x.shape for x in embeddings])
 
-    # np.savez('../embeddings.npz', embeddings=embeddings)
+    # np.savez('./embeddings.npz', embeddings=embeddings)
     # print('Save embed')
 
     new_embeddings = []
@@ -637,8 +637,8 @@ if __name__ == '__main__':
     pair_ratio = 0.9
     train_type = 'hyper'
 
-    train_zip = np.load("../data/%s/train_data.npz" % (args.data), allow_pickle=True)
-    test_zip = np.load("../data/%s/test_data.npz" % (args.data), allow_pickle=True)
+    train_zip = np.load("./data/%s/train_data.npz" % (args.data), allow_pickle=True)
+    test_zip = np.load("./data/%s/test_data.npz" % (args.data), allow_pickle=True)
     train_data, test_data = train_zip['train_data'], test_zip['test_data']
 
     try:
@@ -723,10 +723,10 @@ if __name__ == '__main__':
         # Note that for this part, the word2vec still takes sentences with
         # words starts at "0"
         if not args.TRY and os.path.exists(
-                "../%s_wv_%d_%s.npy" %
+                "./%s_wv_%d_%s.npy" %
                 (args.data, args.dimensions, args.walk)):
             A = np.load(
-                "../%s_wv_%d_%s.npy" %
+                "./%s_wv_%d_%s.npy" %
                 (args.data,
                  args.dimensions,
                  args.walk),
@@ -768,7 +768,7 @@ if __name__ == '__main__':
                 workers=multiprocessing.cpu_count())
             wv = w2v.wv
             A = [wv[str(i)] for i in range(num_list[-1])]
-            np.save("../%s_wv_%d_%s.npy" %
+            np.save("./%s_wv_%d_%s.npy" %
                     (args.data, args.dimensions, args.walk), A)
 
             from sklearn.preprocessing import StandardScaler

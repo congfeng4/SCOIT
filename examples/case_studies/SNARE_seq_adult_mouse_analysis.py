@@ -22,7 +22,18 @@ if __name__ == "__main__":
     print(data[1].shape)
 
     sc_model = sc_multi_omics()
-    predict_data = sc_model.fit_list_complete(data, normalization=False, dist="gaussian", lr=1e-3, n_epochs=3000)
+    # predict_data = sc_model.fit_list_complete(data, normalization=False, dist="gaussian", lr=1e-3, n_epochs=3000)
+    predict_data = sc_model.fit_list_complete(
+        data,
+        dist="gaussian",
+        lr=1e-3,
+        n_epochs=3000,
+        lambda_C_regularizer=0.01,
+        lambda_G_regularizer=0.01,
+        lambda_O_regularizer=[0.01, 0.01],
+        # normalization=True,
+        # pre_impute=True,
+    )
 
     np.savetxt("cell_embeddings.csv", sc_model.C, delimiter=',')
     np.savetxt("gene_embeddings.csv", sc_model.G[0], delimiter=',')
@@ -30,4 +41,4 @@ if __name__ == "__main__":
     np.savetxt("omics_embeddings.csv", sc_model.O, delimiter=',')
     np.savetxt("predict_data_expression.csv", predict_data[0])
     np.savetxt("predict_data_loc.csv", predict_data[1])
-    print(time.time() - start_time)
+    print('time', time.time() - start_time)

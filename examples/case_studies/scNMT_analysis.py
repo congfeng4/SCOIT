@@ -33,7 +33,16 @@ if __name__ == "__main__":
     print(data[2].shape)
 
     sc_model = sc_multi_omics()
-    predict_data = sc_model.fit_list(data, normalization=False, dist="gaussian", lr=1e-3, n_epochs=1000)
+    # predict_data = sc_model.fit_list(data, normalization=False, dist="gaussian", lr=1e-3, n_epochs=1000)
+    predict_data = sc_model.fit_list(
+        data,
+        dist="gaussian",
+        lr=1e-3,
+        n_epochs=1000,
+        lambda_C_regularizer=0.01,
+        lambda_G_regularizer=0.01,
+        lambda_O_regularizer=[0.01, 0.01],
+    )
 
     np.savetxt("cell_embeddings.csv", sc_model.C, delimiter=',')
     np.savetxt("predict_data_expression.csv", predict_data[0])

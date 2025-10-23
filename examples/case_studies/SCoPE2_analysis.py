@@ -25,7 +25,17 @@ if __name__ == "__main__":
     print(data.shape)
 
     sc_model = sc_multi_omics()
-    predict_data = sc_model.fit_complete(data, dist="gaussian", lr=1e-3, n_epochs=5000)
+    predict_data = sc_model.fit_complete(
+        data,
+        dist="gaussian",
+        lr=1e-3,
+        n_epochs=5000,
+        lambda_C_regularizer=0.01,
+        lambda_G_regularizer=0.01,
+        lambda_O_regularizer=[0.01, 0.01],
+        lambda_OC_regularizer=[1, 1],
+        lambda_OG_regularizer=[1, 1],
+    )
 
     np.savetxt("cell_embeddings.csv", sc_model.C, delimiter=',')
     np.savetxt("gene_embeddings.csv", sc_model.G, delimiter=',')

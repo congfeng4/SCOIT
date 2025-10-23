@@ -29,7 +29,19 @@ if __name__ == "__main__":
     data = np.array([expression_data, protein_data])
 
     sc_model = sc_multi_omics()
-    predict_data = sc_model.fit(data, dist="gaussian", n_epochs=1000)
+    # predict_data = sc_model.fit(data, dist="gaussian", n_epochs=1000)
+    predict_data = sc_model.fit_complete(
+        data,
+        dist="gaussian",
+        lr=1e-2,
+        n_epochs=1000,
+        lambda_C_regularizer=0.01,
+        lambda_G_regularizer=1,
+        lambda_O_regularizer=[1, 1],
+        lambda_OC_regularizer=[1, 1],
+        lambda_OG_regularizer=[0.01, 0.01],
+        normalization=True
+    )
 
     np.savetxt("cell_embeddings.csv", sc_model.C, delimiter=',')
     np.savetxt("local_gene_embeddings.csv", sc_model.OG, delimiter=',')
