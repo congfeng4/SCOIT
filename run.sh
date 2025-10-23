@@ -2,7 +2,7 @@ dataname=PEA_STA
 feature=walk
 epochs=30
 loss=zinb
-subdir="${dataname}-${loss}"
+subdir="hgnn/${dataname}-${loss}"
 
 mkdir -p ./logs/${subdir}/ ./embeddings/${subdir}
 

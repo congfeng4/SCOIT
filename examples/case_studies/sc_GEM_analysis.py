@@ -1,9 +1,8 @@
 import numpy as np
 import pandas as pd
 from scoit import sc_multi_omics
-from torch.utils.tensorboard import SummaryWriter
+from scoit.cell_analysis import save_scoit_embeddings
 import time
-from datetime import datetime
 
 
 def load_data():
@@ -28,14 +27,15 @@ def load_data():
     return expression_data, methylation_data, labels
 
 
+
 if __name__ == "__main__":
+
     start_time = time.time()
     expression_data, methylation_data, labels = load_data()
     data = np.array([expression_data, methylation_data])
     print(data.shape)
-    tb_logger = SummaryWriter(f'./tb_logs/scoit/sc_GEM/{datetime.now()}')
 
-    sc_model = sc_multi_omics(tb_logger=tb_logger)
+    sc_model = sc_multi_omics()
     # predict_data = sc_model.fit(data, dist="negative_bionomial", n_epochs=1000, device="cpu")
     predict_data = sc_model.fit_complete(
         data,
@@ -51,9 +51,5 @@ if __name__ == "__main__":
         lambda_OG_regularizer=[1, 1],
     )
 
-    np.savetxt("cell_embeddings.csv", sc_model.C, delimiter=',')
-    np.savetxt("gene_embeddings.csv", sc_model.G, delimiter=',')
-    np.savetxt("omics_embeddings.csv", sc_model.O, delimiter=',')
-    np.savetxt("predict_data_expression.csv", predict_data[0])
-    np.savetxt("predict_data_methylation.csv", predict_data[1])
+    save_scoit_embeddings(sc_model, "sc_GEM")
     print('time', time.time() - start_time)

@@ -6,6 +6,8 @@ from communities.algorithms import louvain_method
 from sklearn.cluster import SpectralClustering
 from igraph import Graph
 import leidenalg
+import os
+from umap import UMAP
 
 
 # construct KNN graph
@@ -119,3 +121,19 @@ def cluster_evaluate(cell_embeddings, cell_labels):
     km.fit(cell_embeddings)
     y_pred = km.labels_
     return compute_clustering_metrics(y_true, y_pred)
+
+
+def save_scoit_embeddings(sc_model, dataname: str, predict_data=None):
+    subdir = f'./embeddings/scoit/{dataname}'
+    os.makedirs(subdir, exist_ok=True)
+    os.chdir(subdir)
+
+    np.savetxt("cell_embeddings.csv", sc_model.C, delimiter=',')
+    np.savetxt("gene_embeddings.csv", sc_model.G, delimiter=',')
+    np.savetxt("omics_embeddings.csv", sc_model.O, delimiter=',')
+    np.savetxt("local_gene_embeddings.csv", sc_model.OG, delimiter=',')
+    np.savetxt("local_cell_embeddings.csv", sc_model.OC, delimiter=',')
+
+    if predict_data:
+        np.savetxt("predict_data_expression.csv", predict_data[0])
+        np.savetxt("predict_data_protein.csv", predict_data[1])

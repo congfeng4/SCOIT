@@ -3,6 +3,7 @@ import pandas as pd
 from scoit import sc_multi_omics
 import time
 
+from scoit.cell_analysis import save_scoit_embeddings
 
 def load_data():
     expression_data = np.loadtxt("data/scNMT/expression_data_300.csv")
@@ -21,10 +22,12 @@ def load_data():
             labels.append(2)
     labels = np.array(labels)
 
+
     return expression_data, promoter_methy_data, promoter_acc_data, labels
 
 
 if __name__ == "__main__":
+
     start_time = time.time()
     expression_data, promoter_methy_data, promoter_acc_data, labels = load_data()
     data = [expression_data, promoter_methy_data, promoter_acc_data]
@@ -34,18 +37,15 @@ if __name__ == "__main__":
 
     sc_model = sc_multi_omics()
     # predict_data = sc_model.fit_list(data, normalization=False, dist="gaussian", lr=1e-3, n_epochs=1000)
-    predict_data = sc_model.fit_list(
+    predict_data = sc_model.fit_list_complete(
         data,
         dist="gaussian",
         lr=1e-3,
         n_epochs=1000,
         lambda_C_regularizer=0.01,
         lambda_G_regularizer=0.01,
-        lambda_O_regularizer=[0.01, 0.01],
+        lambda_O_regularizer=[0.01, 0.01, 0.01],
     )
 
-    np.savetxt("cell_embeddings.csv", sc_model.C, delimiter=',')
-    np.savetxt("predict_data_expression.csv", predict_data[0])
-    np.savetxt("predict_data_promoter_methy.csv", predict_data[1])
-    np.savetxt("predict_data_promoter_acc.csv", predict_data[2])
+    save_scoit_embeddings(sc_model, 'scNMT', predict_data)
     print(time.time() - start_time)

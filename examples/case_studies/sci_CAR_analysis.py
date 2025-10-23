@@ -3,6 +3,8 @@ import pandas as pd
 from scoit import sc_multi_omics
 import time
 
+from scoit.cell_analysis import save_scoit_embeddings
+
 
 def load_data():
     expression_data = pd.read_csv("data/sci_CAR/RNA_pca.csv", index_col=0, na_filter=False).to_numpy()
@@ -31,13 +33,9 @@ if __name__ == "__main__":
         lambda_C_regularizer=0.01,
         lambda_G_regularizer=0.01,
         lambda_O_regularizer=[0.01, 0.01],
-        pre_impute=True,
+        pre_impute=False,
     )
+    print(sc_model.G[0].shape, sc_model.G[1].shape)
 
-    np.savetxt("cell_embeddings.csv", sc_model.C, delimiter=',')
-    np.savetxt("gene_embeddings.csv", sc_model.G[0], delimiter=',')
-    np.savetxt("loc_embeddings.csv", sc_model.G[1], delimiter=',')
-    np.savetxt("omics_embeddings.csv", sc_model.O, delimiter=',')
-    np.savetxt("predict_data_expression.csv", predict_data[0])
-    np.savetxt("predict_data_loc.csv", predict_data[1])
+    save_scoit_embeddings(sc_model, 'sci_CAR', predict_data)
     print('time', time.time() - start_time)

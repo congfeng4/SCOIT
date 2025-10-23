@@ -1,6 +1,8 @@
+import os
 import numpy as np
 import pandas as pd
 from scoit import sc_multi_omics
+from scoit.cell_analysis import save_scoit_embeddings
 import time
 
 
@@ -28,7 +30,7 @@ if __name__ == "__main__":
     expression_data, protein_data, labels = load_data()
     data = np.array([expression_data, protein_data])
 
-    sc_model = sc_multi_omics()
+    sc_model = sc_multi_omics(K1=30, K2=30, K3=30)
     # predict_data = sc_model.fit(data, dist="gaussian", n_epochs=1000)
     predict_data = sc_model.fit_complete(
         data,
@@ -40,11 +42,8 @@ if __name__ == "__main__":
         lambda_O_regularizer=[1, 1],
         lambda_OC_regularizer=[1, 1],
         lambda_OG_regularizer=[0.01, 0.01],
-        normalization=True
+        pre_impute=False,
     )
+    save_scoit_embeddings(sc_model, 'PEA_STA')
 
-    np.savetxt("cell_embeddings.csv", sc_model.C, delimiter=',')
-    np.savetxt("local_gene_embeddings.csv", sc_model.OG, delimiter=',')
-    np.savetxt("predict_data_expression.csv", predict_data[0])
-    np.savetxt("predict_data_protein.csv", predict_data[1])
-    print(time.time() - start_time)
+    print('time', time.time() - start_time)
