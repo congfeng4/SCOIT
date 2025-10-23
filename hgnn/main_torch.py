@@ -13,7 +13,7 @@ import os
 import time
 import argparse
 import warnings
-
+from concurrent.futures import ThreadPoolExecutor
 from random_walk import random_walk
 from random_walk_hyper import random_walk_hyper
 from Modules import *
@@ -101,6 +101,7 @@ def parse_args():
         choices=('bce', 'mse', 'zinb', 'rank', 'gauss'),
         help='Loss type',
     )
+    parser.add_argument('--max_workers', '-w', type=int, default=4)
     args = parser.parse_args()
 
     if not args.random_walk:
@@ -299,9 +300,8 @@ def eval_epoch(args, model, loss_func, validation_data, batch_size, type):
             y = y[index]
 
         pred, label, w_list = [], [], []
-
-        for i in tqdm(range(int(math.floor(len(validation_data) / batch_size))),
-                      mininterval=0.1, desc='  - (Validation)   ', leave=False):
+        p_list = []
+        for i in range(int(math.floor(len(validation_data) / batch_size))):
             # prepare data
             batch_x = validation_data[i * batch_size:(i + 1) * batch_size]
             batch_w = validation_weight[i * batch_size:(i + 1) * batch_size]
@@ -309,23 +309,27 @@ def eval_epoch(args, model, loss_func, validation_data, batch_size, type):
             if len(y) == 0:
                 # print('generate_negative...')
                 # TODO: This is really slow.
-                batch_x, batch_y, batch_w = generate_negative(
-                    batch_x, "test_dict", type, weight=batch_w)
+                p = thread_pool.submit(generate_negative, batch_x, "test_dict", type, weight=batch_w)
+                p_list.append(p)
+                # batch_x, batch_y, batch_w = generate_negative(
             else:
                 batch_y = y[i * batch_size:(i + 1) * batch_size]
 
+        for res in tqdm(as_completed(p_list),
+                      mininterval=0.1, desc='  - (Validation)   ', leave=False):
+            batch_x, batch_y, batch_w = res.result()
             index = torch.randperm(len(batch_x))
             batch_x, batch_y, batch_w = batch_x[index], batch_y[index], batch_w[index]
 
             pred_batch, *_, loss = train_batch_hyperedge(model, loss_func, batch_x, batch_w, type, batch_y)
             pred.append(pred_batch)
-            label.append(batch_y)
+            # label.append(batch_y)
             w_list.append(batch_w)
             # recon_total_loss += recon_loss.item()
             bce_total_loss += loss.item()
 
         pred = torch.cat(pred, dim=0)
-        label = torch.cat(label, dim=0)
+        # label = torch.cat(label, dim=0)
         w = torch.cat(w_list, dim=0)
 
         auc1, auc2, str1, str2 = roc_auc_cuda(w, pred)
@@ -631,6 +635,7 @@ def get_adjacency(data, norm=True):
 
 if __name__ == '__main__':
     global tb_logger
+    global thread_pool
 
     args = parse_args()
     neg_num = 5
@@ -833,6 +838,7 @@ if __name__ == '__main__':
     print("params to be trained", params)
 
     tb_logger = SummaryWriter(f'./tb_logs/{args.data}-{args.feature}-{args.loss}-{datetime.now()}')
+    thread_pool = ThreadPoolExecutor(max_workers=args.max_workers)
 
     train(args, (classifier_model, Randomwalk_Word2vec),
           loss=((loss, 1.0), (loss2, 0.0)),
