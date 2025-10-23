@@ -114,13 +114,20 @@ def compute_clustering_metrics(y_true, y_pred):
     )
 
 
-def cluster_evaluate(cell_embeddings, cell_labels):
+def cluster_evaluate(cell_embeddings, cell_labels, use_umap=False):
     label_encoder = LabelEncoder()
     y_true = label_encoder.fit_transform(cell_labels)
     km = KMeans(n_clusters=len(label_encoder.classes_))
-    km.fit(cell_embeddings)
+    km.fit(cell_embeddings if not use_umap else UMAP().fit_transform(cell_embeddings))
     y_pred = km.labels_
     return compute_clustering_metrics(y_true, y_pred)
+
+
+def save_array(name, array):
+    try:
+        np.savetxt(name + '.csv', array, delimiter=',')
+    except:
+        np.save(name + ".npz", array)
 
 
 def save_scoit_embeddings(sc_model, dataname: str, predict_data=None):
@@ -128,12 +135,15 @@ def save_scoit_embeddings(sc_model, dataname: str, predict_data=None):
     os.makedirs(subdir, exist_ok=True)
     os.chdir(subdir)
 
-    np.savetxt("cell_embeddings.csv", sc_model.C, delimiter=',')
-    np.savetxt("gene_embeddings.csv", sc_model.G, delimiter=',')
-    np.savetxt("omics_embeddings.csv", sc_model.O, delimiter=',')
-    np.savetxt("local_gene_embeddings.csv", sc_model.OG, delimiter=',')
-    np.savetxt("local_cell_embeddings.csv", sc_model.OC, delimiter=',')
-
-    if predict_data:
-        np.savetxt("predict_data_expression.csv", predict_data[0])
-        np.savetxt("predict_data_protein.csv", predict_data[1])
+    save_array("cell_embeddings", sc_model.C)
+    save_array("gene_embeddings", sc_model.G)
+    save_array("omics_embeddings", sc_model.O)
+    try:
+        save_array("local_gene_embeddings", sc_model.OG)
+        save_array("local_cell_embeddings", sc_model.OC)
+    except:
+        pass
+    
+    if predict_data is not None:
+        save_array("predict_data_expression", predict_data[0])
+        save_array("predict_data_protein", predict_data[1])

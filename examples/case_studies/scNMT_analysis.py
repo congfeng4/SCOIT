@@ -36,12 +36,12 @@ if __name__ == "__main__":
     print(data[2].shape)
 
     sc_model = sc_multi_omics()
-    # predict_data = sc_model.fit_list(data, normalization=False, dist="gaussian", lr=1e-3, n_epochs=1000)
     predict_data = sc_model.fit_list_complete(
         data,
+        pre_impute=False, # imputation takes a long time.
         dist="gaussian",
         lr=1e-3,
-        n_epochs=1000,
+        n_epochs=3000,
         lambda_C_regularizer=0.01,
         lambda_G_regularizer=0.01,
         lambda_O_regularizer=[0.01, 0.01, 0.01],
