@@ -39,11 +39,9 @@ if __name__ == "__main__":
     # predict_data = sc_model.fit(data, dist="negative_bionomial", n_epochs=1000, device="cpu")
     predict_data = sc_model.fit_complete(
         data,
-        # pre_impute=False, # Does not affect loss nan or not.
-        # normalization=False, # Must be true or loss is nan.
         dist="negative_bionomial",
-        lr=1e-2,
-        n_epochs=1000,  # original settting is 1000 but not converge.
+        lr=1e-1,
+        n_epochs=3000,  # original settting is 1000 but not converge.
         lambda_C_regularizer=0.01,
         lambda_G_regularizer=0.01,
         lambda_O_regularizer=[0.01, 0.01],
