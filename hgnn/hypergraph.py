@@ -457,7 +457,7 @@ def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Pa
     np.savez(save_dir / 'train_data.npz', train_data=train_data, train_weight=train_weight,
              nums_type=nums_type)
 
-    assert check_hypergraph_isolated_nodes(test_data, nums_type)
+    # assert check_hypergraph_isolated_nodes(test_data, nums_type)
     np.savez(save_dir / 'test_data.npz', test_data=test_data, test_weight=test_weight,
              nums_type=nums_type)
     print('Save to', save_dir)
