@@ -1,19 +1,17 @@
-dataname=PEA_STA
+dataname=sc_GEM
 feature=walk
-epochs=30
-loss=zinb
+epochs=100
+loss=bce
 subdir="hgnn/${dataname}-${loss}"
 
-mkdir -p ./logs/${subdir}/ ./embeddings/${subdir}
+mkdir -p ./embeddings/${subdir}
 
 echo Begin to train ${subdir} for ${epochs} epochs
-cd hgnn
 
 python main_torch.py --data ${dataname} --feature ${feature} --iter ${epochs} --loss ${loss}
 
 echo ${dataname} ends
 
-cd ..
 mv *.npy ./embeddings/${subdir}
 
 echo Move embeddings to dir.
