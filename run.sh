@@ -1,4 +1,4 @@
-dataname=sc_GEM
+dataname=PEA_STA
 feature=walk
 epochs=30
 subdir="${dataname}-${feature}"

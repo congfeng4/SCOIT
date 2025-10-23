@@ -33,10 +33,14 @@ if __name__ == "__main__":
     print(data.shape)
 
     sc_model = sc_multi_omics()
-    predict_data = sc_model.fit(data, dist="negative_bionomial", n_epochs=1000, device=0)
+    predict_data = sc_model.fit_complete(data, pre_impute=False,
+                                 dist="negative_bionomial", n_epochs=5000, device=0)
 
     np.savetxt("cell_embeddings.csv", sc_model.C, delimiter=',')
     np.savetxt("gene_embeddings.csv", sc_model.G, delimiter=',')
+    np.savetxt("omics_embeddings.csv", sc_model.O, delimiter=',')
+    np.savetxt("omics_gene_embeddings.csv", sc_model.OG, delimiter=',')
+    np.savetxt("omics_cell_embeddings.csv", sc_model.OC, delimiter=',')
     np.savetxt("omics_embeddings.csv", sc_model.O, delimiter=',')
     np.savetxt("predict_data_expression.csv", predict_data[0])
     np.savetxt("predict_data_methylation.csv", predict_data[1])

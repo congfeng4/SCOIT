@@ -84,7 +84,7 @@ class HyperGraphCreator:
 
         begin = time.time()
         self.multi_omics_df = {
-            name: pd.read_csv(path, **self.read_csv_args).sort_index()
+            name: pd.read_csv(path, **self.read_csv_args)
             for name, path in self.multi_omics_data.items()
         }
         print('Load data done, time:', time.time() - begin)
@@ -263,7 +263,7 @@ class HyperGraphCreator:
         self.save_metadata_and_edges(df_edges)
 
 
-def process_data(multi_omics_data: dict[str, Path], cell_key: str, dataname: str, prefix: Path, filter_edge=True,
+def process_data(multi_omics_data: dict[str, Path], cell_key: str, dataname: str, prefix: Path, filter_edge=False,
                  fast_edge=True,
                  pickle=False,
                  read_csv_args: dict = {}):
