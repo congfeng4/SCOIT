@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import json
 from collections import Counter, defaultdict
 from typing import Union
+from sklearn.preprocessing import MinMaxScaler
 
 
 def robust_zscore(x):
@@ -22,6 +23,16 @@ def robust_zscore_filter(series, thresh=3.5):
     mask = np.abs(rz) <= thresh
     return series.where(mask, np.nan)  # 异常值置 NaN
 
+def minmax_normalize(df: pd.DataFrame):
+    """
+    Min-Max normalize a DataFrame **without touching** index or columns.
+    Returns a new DataFrame with the same shape, index and columns.
+    """
+    scaler = MinMaxScaler()
+    # keep the order: index → columns → values
+    normed = scaler.fit_transform(df.values)
+    return pd.DataFrame(normed, index=df.index, columns=df.columns), min_max
+
 
 class HyperGraphCreator:
     """
@@ -36,7 +47,7 @@ class HyperGraphCreator:
 
     def __init__(self, multi_omics_data: dict[str, Path], cell_key: str, dataname: str,
                  prefix: Path, filter_edge=False, fast_edge=True, pickle=False,
-                 read_csv_args: dict = {}):
+                 read_csv_args=None):
         """
         Initialize the HyperGraphCreator with processing parameters.
 
@@ -49,6 +60,8 @@ class HyperGraphCreator:
         :param pickle: Whether to save edges in pickle format.
         :param read_csv_args: Additional arguments to pass to pd.read_csv.
         """
+        if read_csv_args is None:
+            read_csv_args = {}
         self.multi_omics_data = multi_omics_data
         self.cell_key = cell_key
         self.dataname = dataname
@@ -57,6 +70,7 @@ class HyperGraphCreator:
         self.fast_edge = fast_edge
         self.pickle = pickle
         self.read_csv_args = read_csv_args.copy()
+        self.normalize_stats = []
 
         # Initialize variables to be populated during processing
         self.multi_omics_df = None
@@ -227,6 +241,7 @@ class HyperGraphCreator:
             'omics_dims': [len(df.columns) for df in self.multi_omics_df.values()],
             'raw_data': {k: str(v) for k, v in self.multi_omics_data.items()},
             'cell_key': self.cell_key,
+            'normalize_stats': self.normalize_stats,
         }
 
         # Save metadata
@@ -414,7 +429,7 @@ def load_graph_metadata(dir_path: Path):
     return df
 
 
-def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Path):
+def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Path, normalization=True):
     assert 0 <= train_size <=1, train_size
 
     edges = hg.edges
@@ -448,10 +463,14 @@ def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Pa
 
     train_data, test_data, train_weight, test_weight = train_test_split(edges_data, edges_weight,
                                                                           train_size=train_size)
+    if normalization:
+        scaler = MinMaxScaler()
+        train_weight = scaler.fit_transform(train_weight.reshape(-1, 1)).reshape(-1)
+        test_weight = scaler.transform(test_weight.reshape(-1, 1)).reshape(-1)
+        print('Normalized, min_val', scaler.data_min_, 'max_val', scaler.data_max_)
 
     print('train_data', train_data.shape, 'train_weight', train_weight.shape,
           'test_data', test_data.shape, 'test_weight', test_weight.shape)
-
 
     assert check_hypergraph_isolated_nodes(train_data, nums_type)
     np.savez(save_dir / 'train_data.npz', train_data=train_data, train_weight=train_weight,
