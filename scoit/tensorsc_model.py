@@ -8,6 +8,7 @@ from torch.optim import SGD, Adam
 from torch.utils.data import Dataset, DataLoader, TensorDataset
 from scipy import stats
 from scoit import matrix_model, matrix_model_complete, matrix_list_model, matrix_list_model_complete
+from torch.utils.tensorboard import SummaryWriter
 
 
 def min_max_normalization(data, zero_impute=True):
@@ -50,11 +51,12 @@ def min_max_normalization(data, zero_impute=True):
 
 
 class sc_multi_omics:
-    def __init__(self, K1=30, K2=30, K3=30, random_seed=123):
+    def __init__(self, K1=30, K2=30, K3=30, random_seed=123, tb_logger: SummaryWriter=None):
         self.K1 = K1
         self.K2 = K2
         self.K3 = K3
         self.random_seed = random_seed
+        self.tb_logger = tb_logger
 
     def cal_corr(self, data):
         if data.shape[0] == 1:
@@ -186,6 +188,8 @@ class sc_multi_omics:
                 optimizer.step()
             if verbose:
                 print("Epoch {}| Loss: {:.4f}".format(epoch, running_loss))
+            if self.tb_logger:
+                self.tb_logger.add_scalar("loss", running_loss, epoch)
 
             # detecting earlystoping:
             if earlystopping:
@@ -277,6 +281,8 @@ class sc_multi_omics:
             optimizer.step()
             if verbose:
                 print("Epoch {}| Loss: {:.4f}".format(epoch, running_loss))
+            if self.tb_logger:
+                self.tb_logger.add_scalar("loss", running_loss, epoch)
 
             # detecting earlystoping:
             if earlystopping:
@@ -360,6 +366,8 @@ class sc_multi_omics:
                 optimizer.step()
             if verbose:
                 print("Epoch {}| Loss: {:.4f}".format(epoch, running_loss))
+            if self.tb_logger:
+                self.tb_logger.add_scalar("loss", running_loss, epoch)
 
             # detecting earlystoping:
             if earlystopping:
@@ -432,6 +440,8 @@ class sc_multi_omics:
             optimizer.step()
             if verbose:
                 print("Epoch {}| Loss: {:.4f}".format(epoch, running_loss))
+            if self.tb_logger:
+                self.tb_logger.add_scalar("loss", running_loss, epoch)
 
             # detecting earlystoping:
             if earlystopping:

@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
 from scoit import sc_multi_omics
+from torch.utils.tensorboard import SummaryWriter
 import time
+from datetime import datetime
 
 
 def load_data():
@@ -31,8 +33,9 @@ if __name__ == "__main__":
     expression_data, methylation_data, labels = load_data()
     data = np.array([expression_data, methylation_data])
     print(data.shape)
+    tb_logger = SummaryWriter(f'./tb_logs/scoit/sc_GEM/{datetime.now()}')
 
-    sc_model = sc_multi_omics()
+    sc_model = sc_multi_omics(tb_logger=tb_logger)
     # predict_data = sc_model.fit(data, dist="negative_bionomial", n_epochs=1000, device="cpu")
     predict_data = sc_model.fit_complete(
         data,
