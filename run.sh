@@ -1,6 +1,6 @@
-dataname=sc_GEM
+dataname=PEA_STA
 feature=walk
-epochs=50
+epochs=10
 loss=bce
 bs=96
 subdir="hgnn/${dataname}-${loss}"
