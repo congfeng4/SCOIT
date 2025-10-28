@@ -31,7 +31,7 @@ def minmax_normalize(df: pd.DataFrame):
     scaler = MinMaxScaler()
     # keep the order: index → columns → values
     normed = scaler.fit_transform(df.values)
-    return pd.DataFrame(normed, index=df.index, columns=df.columns), min_max
+    return pd.DataFrame(normed, index=df.index, columns=df.columns)
 
 
 class HyperGraphCreator:
@@ -130,6 +130,14 @@ class HyperGraphCreator:
         self.orig_edge_count = 0
 
         print(f'{self.num_omics=}, {self.num_cells=}, {self.num_genes=}, {self.num_nodes=}')
+
+    def load_cell_stage(self):
+        path = Path(list(self.multi_omics_data.values())[0]).with_name('cell_stage.json')
+        try:
+            self.cell_stage = json.load(path.open('r'))
+        except:
+            print('No cell stage in', path)
+            self.cell_stage = None
 
     def create_nodes_file(self) -> None:
         """Create and save the nodes CSV file."""

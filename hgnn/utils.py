@@ -29,30 +29,30 @@ def walkpath2str(walk):
     return [list(map(str, w)) for w in tqdm(walk)]
 
 
-# def roc_auc_cuda(y_true, y_pred):
-#     try:
-#         y_true = y_true.cpu().detach().numpy().reshape((-1, 1))
-#         y_pred = y_pred.cpu().detach().numpy().reshape((-1, 1))
-#         return roc_auc_score(
-#             y_true, y_pred), average_precision_score(
-#             y_true, y_pred)
-#     except BaseException:
-#         return 0.0, 0.0
-
 def roc_auc_cuda(y_true, y_pred):
-    if not type(y_true) == np.ndarray:
+    try:
         y_true = y_true.cpu().detach().numpy().reshape((-1, 1))
         y_pred = y_pred.cpu().detach().numpy().reshape((-1, 1))
-    try:
         return roc_auc_score(
-            y_true.reshape((-1)), y_pred.reshape((-1))), average_precision_score(
-            y_true.reshape((-1)), y_pred.reshape((-1))), "auc", "aupr"
-    except BaseException as e:
-        try:
-            return pearsonr(y_true.reshape((-1)), y_pred.reshape((-1)))[0], \
-                spearmanr(y_true.reshape((-1)), y_pred.reshape((-1)))[0], "pearson", "spearman"
-        except BaseException as e:
-            return 0.0, 0.0, "error", "error"
+            y_true, y_pred), average_precision_score(
+            y_true, y_pred)
+    except BaseException:
+        return 0.0, 0.0
+
+# def roc_auc_cuda(y_true, y_pred):
+#     if not type(y_true) == np.ndarray:
+#         y_true = y_true.cpu().detach().numpy().reshape((-1, 1))
+#         y_pred = y_pred.cpu().detach().numpy().reshape((-1, 1))
+#     try:
+#         return roc_auc_score(
+#             y_true.reshape((-1)), y_pred.reshape((-1))), average_precision_score(
+#             y_true.reshape((-1)), y_pred.reshape((-1))), "auc", "aupr"
+#     except BaseException as e:
+#         try:
+#             return pearsonr(y_true.reshape((-1)), y_pred.reshape((-1)))[0], \
+#                 spearmanr(y_true.reshape((-1)), y_pred.reshape((-1)))[0], "pearson", "spearman"
+#         except BaseException as e:
+#             return 0.0, 0.0, "error", "error"
 
 
 def accuracy(output, target):
