@@ -98,7 +98,7 @@ class HyperGraphCreator:
 
         begin = time.time()
         self.multi_omics_df = {
-            name: pd.read_csv(path, **self.read_csv_args)
+            name: pd.read_csv(path, **self.read_csv_args).sort_index()
             for name, path in self.multi_omics_data.items()
         }
         print('Load data done, time:', time.time() - begin)
@@ -437,7 +437,7 @@ def load_graph_metadata(dir_path: Path):
     return df
 
 
-def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Path, normalization=True):
+def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Path, normalization=False):
     assert 0 <= train_size <=1, train_size
 
     edges = hg.edges

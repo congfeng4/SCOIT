@@ -1,6 +1,6 @@
 dataname=sc_GEM
 feature=walk
-epochs=300
+epochs=100
 loss=bce
 bs=96
 subdir="hgnn/${dataname}"
