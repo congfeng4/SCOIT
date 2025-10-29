@@ -14,7 +14,7 @@ logs
 /checkpoints
 /embeddings
 *.png
-/walks
+/walk
 /data*
 *.npz
 tb_logs

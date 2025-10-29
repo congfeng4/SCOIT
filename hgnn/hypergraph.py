@@ -359,6 +359,10 @@ class HyperGraph:
     def num_cells(self):
         return self.metadata['num_cells']
 
+    @property
+    def num_genes(self):
+        return self.metadata['num_genes']
+        
     def __str__(self):
         return f'HyperGraph(num_nodes={self.num_nodes}, num_edges={self.num_edges})'
 
@@ -368,6 +372,10 @@ class HyperGraph:
     @property
     def cell_names(self):
         return self.nodes['Name'][self.metadata['cell_offset'] + np.arange(self.num_cells)]
+
+    @property
+    def gene_names(self):
+        return self.nodes['Name'][self.metadata['gene_offset'] + np.arange(self.num_genes)]
 
 
 def load_graph(dir_path: Path, for_test=False, load_edges=True) -> HyperGraph:

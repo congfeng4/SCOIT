@@ -1,7 +1,7 @@
 dataname=sc_GEM
 feature=walk
 epochs=200
-loss=mse
+loss=bce
 bs=96
 subdir="hgnn/${dataname}-${loss}"
 
