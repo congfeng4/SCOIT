@@ -16,7 +16,7 @@ import warnings
 from concurrent.futures import ThreadPoolExecutor
 from random_walk import random_walk
 from random_walk_hyper import random_walk_hyper
-from Modules import *
+from Modules_zinb import *
 from scoit.cell_analysis import cluster_evaluate
 from utils import *
 
@@ -283,7 +283,7 @@ def train_epoch(args, model, loss_func, training_data, optimizer, batch_size, on
     y = torch.cat(y_list)
     w = torch.cat(w_list)
     pred = torch.cat(pred_list)
-    auc1, auc2, str1, str2 = roc_auc_cuda(w, pred)
+    auc1, auc2, str1, str2 = roc_auc_cuda_zinb(w, pred)
     return bce_total_loss / batch_num, skipgram_total_loss / batch_num, recon_total_loss / batch_num, np.mean(
         acc_list), auc1, auc2, str1, str2
 
@@ -337,7 +337,7 @@ def eval_epoch(args, model, loss_func, validation_data, batch_size, type):
         # label = torch.cat(label, dim=0)
         w = torch.cat(w_list, dim=0)
 
-        auc1, auc2, str1, str2 = roc_auc_cuda(w, pred)
+        auc1, auc2, str1, str2 = roc_auc_cuda_zinb(w, pred)
 
     return bce_total_loss / (i + 1), recon_total_loss / (i + 1), auc1, auc2, str1, str2
 

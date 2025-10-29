@@ -89,6 +89,13 @@ def parse_args():
         default=96,
         help='Batch size'
     )
+    parser.add_argument(
+        '-m',
+        '--loss',
+        type=str,
+        choices=('bce', 'mse', 'zinb', 'rank', 'gauss', 'nb'),
+        help='Loss type',
+    )
     args = parser.parse_args()
 
     if not args.random_walk:

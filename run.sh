@@ -1,9 +1,9 @@
 dataname=sc_GEM
 feature=walk
-epochs=100
-loss=bce
+epochs=200
+loss=mse
 bs=96
-subdir="hgnn/${dataname}"
+subdir="hgnn/${dataname}-${loss}"
 
 mkdir -p ./embeddings/${subdir}
 
@@ -11,7 +11,7 @@ echo Begin to train ${subdir} for ${epochs} epochs
 
 conda activate py39
 
-python ./hgnn/main_torch.py --data ${dataname} --feature ${feature} --iter ${epochs} --batch_size=${bs}
+python ./hgnn/main_torch_zinb.py --data ${dataname} --feature ${feature} --iter ${epochs} --batch_size=${bs} --loss ${loss}
 
 echo ${dataname} ends
 
