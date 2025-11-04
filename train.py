@@ -19,7 +19,7 @@ def train_embeddings(data: str, niter: int = 300,
     os.system('rm -f ./*.npy')
 
     subprocess.check_call([
-        sys.executable, './hgnn/main_torch_zinb.py',
+        sys.executable, './hgnn/main_torch.py',
         '--data', data,
         '-f', feature,
         '--iter', str(niter),
