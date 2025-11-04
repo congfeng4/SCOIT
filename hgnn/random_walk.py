@@ -98,7 +98,7 @@ def preprocess_transition_probs(sg):
     print("alias edges: ")
     edges = G.edges()
 
-    threads_num = 100
+    threads_num = 10
     pool = ProcessPoolExecutor(max_workers=threads_num)
     process_list = []
 

@@ -662,14 +662,14 @@ if __name__ == '__main__':
     train_data, test_data = train_zip['train_data'], test_zip['test_data']
 
     try:
-        if args.feature == 'adj':
-            raise BaseException
-        else:  # args.feature == 'walk'
+        # if args.feature == 'adj':
+        #     raise BaseException
+        # else:  # args.feature == 'walk'
             # raise BaseException
-            train_weight, test_weight = train_zip["train_weight"].astype('float32'), test_zip["test_weight"].astype(
+        train_weight, test_weight = train_zip["train_weight"].astype('float32'), test_zip["test_weight"].astype(
                 'float32')
             # Only try to use train_weight when the feature is walk.
-            print("Use train_weight", train_weight.shape)
+        print("Use train_weight", train_weight.shape)
     except BaseException:
         print(f"no specific train weight, feature is {args.feature}")
         test_weight = np.ones(len(test_data), dtype='float32')
@@ -757,7 +757,7 @@ if __name__ == '__main__':
             walks = np.loadtxt(walk_path, delimiter=" ").astype('int')
             start = time.time()
             split_num = 20
-            pool = ProcessPoolExecutor(max_workers=split_num)
+            pool = ThreadPoolExecutor(max_workers=split_num)
             process_list = []
             walks = np.array_split(walks, split_num)
 

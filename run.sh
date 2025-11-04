@@ -1,6 +1,6 @@
 dataname=sc_GEM
 feature=walk
-epochs=200
+epochs=300
 loss=bce
 bs=96
 subdir="hgnn/${dataname}-${loss}"
@@ -18,3 +18,4 @@ echo ${dataname} ends
 mv *.npy ./embeddings/${subdir}
 
 echo Move embeddings to dir.
+
