@@ -160,6 +160,7 @@ def train_batch_hyperedge(model, loss_func, batch_data, batch_weight, type, y=""
         main_loss = main_loss.mean()
     elif args.loss == 'gauss':
         main_loss = log_gaussian_positive(w.float(), pred.float(), pred_var)
+        main_loss = main_loss.mean()
     elif args.loss == 'mse':  # Regression
         pred = pred.float().view(-1)
         w = w.float().view(-1)
@@ -421,10 +422,10 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
 
         torch.cuda.empty_cache()
 
-    if not only_rw:
-        checkpoint = torch.load(os.path.join(args.save_path, model_name))
-        model[0].load_state_dict(checkpoint['model_link'])
-        model[1].load_state_dict(checkpoint['model_node2vec'])
+    # if not only_rw:
+    #     checkpoint = torch.load(os.path.join(args.save_path, model_name))
+    #     model[0].load_state_dict(checkpoint['model_link'])
+    #     model[1].load_state_dict(checkpoint['model_node2vec'])
         # save_embeddings(model[0], origin=True) # Don't save here, use the best validation version.
 
 

@@ -153,23 +153,26 @@ def save_scoit_embeddings(sc_model, dataname: str, predict_data=None):
         save_array("predict_data_protein", predict_data[1])
 
 
-def umap_visualize(features, cell_stage, method='UMAP', palette=None, s=40, eval_use_umap=False):
+def umap_visualize(features, cell_stage=None, method='UMAP', palette=None, s=40, eval_use_umap=False):
 
     # plt.figure(figsize=(6,4))
     vec = eval(method)(n_components=2).fit_transform(features)
     sns.scatterplot(x=vec[:, 0], y=vec[:, 1], hue=cell_stage,
-                    hue_order=sorted(set(cell_stage)), palette=palette,
+                    hue_order=sorted(set(cell_stage)) if cell_stage is not None else None,
+                    palette=palette,
                     s=s, linewidth=0, alpha=0.5)
     plt.legend()
     plt.title(method)
 
     # ---- 计算每个类的中心并标注 ----
-    df = pd.DataFrame({'UMAP_1': vec[:, 0], 'UMAP_2': vec[:, 1], 'label': cell_stage})
-    centroids = df.groupby('label')[['UMAP_1', 'UMAP_2']].mean()
+    if cell_stage is not None:
+        df = pd.DataFrame({'UMAP_1': vec[:, 0], 'UMAP_2': vec[:, 1], 'label': cell_stage})
+        centroids = df.groupby('label')[['UMAP_1', 'UMAP_2']].mean()
 
-    for label, row in centroids.iterrows():
-        plt.text(row['UMAP_1'], row['UMAP_2'], str(label),
-                 fontsize=9, ha='center', va='center',)
+        for label, row in centroids.iterrows():
+            plt.text(row['UMAP_1'], row['UMAP_2'], str(label),
+                     fontsize=9, ha='center', va='center',)
+
     plt.tight_layout()
 
     from scoit.cell_analysis import cluster_evaluate

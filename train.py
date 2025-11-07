@@ -1,17 +1,19 @@
 import os
+from pprint import pp
 import subprocess
 from pathlib import Path
 import sys
 import json
 
 
-def train_embeddings(data: str, niter: int = 300,
-                     feature: str = 'walk',
+def train_embeddings(data: str,
+                     niter: int = 1,
+                     feature: str = 'adj',
                      loss: str = 'bce',
-                     bs: int = 96):
+                     bs: int = 1024):
     assert Path('./data').joinpath(data).exists(), data
 
-    subdir = f'{data}-{loss}'
+    subdir = f'{data}-{feature}-{loss}'
     embed_dir = Path('./embeddings/hgnn').joinpath(subdir)
     embed_dir.mkdir(parents=True, exist_ok=True)
     print('Begin to train', subdir, 'for', niter, 'epochs')
@@ -19,14 +21,14 @@ def train_embeddings(data: str, niter: int = 300,
     os.system('rm -f ./*.npy')
 
     subprocess.check_call([
-        sys.executable, './hgnn/main_torch.py',
+        sys.executable, './hgnn/main_torch_zinb.py',
         '--data', data,
         '-f', feature,
         '--iter', str(niter),
         '--loss', loss,
         '--batch_size', str(bs),
     ])
-    print('Train', data, 'ends')
+    print('Train', subdir, 'ends')
 
     config = dict(
         data=data,
@@ -42,16 +44,33 @@ def train_embeddings(data: str, niter: int = 300,
     print('Move embeddings to dir.')
 
 
-ALL_DATA = 'SCoPE2 '.split()
-# ALL_DATA = 'scNMT  SCoPE2  SNARE_seq_adult_mouse  SNARE_seq_neonatal_mouse CITE_seq'.split()
-# PEA_STA  sc_GEM  sci_CAR
+ALL_DATA = 'sci_CAR scNMT  SCoPE2  SNARE_seq_adult_mouse  SNARE_seq_neonatal_mouse CITE_seq'.split()
+# sc_GEM PEA_STA
+
 ALL_LOSS = 'bce mse'.split()
 
 
+def train_all(dry_run=False):
+    if dry_run:
+        niter = 1
+        bs = 1024
+    else:
+        niter = 50
+        bs = 256
+
+    all_combs = list(all_combinations())
+    pp(all_combs)
+
+    for combo in all_combs:
+        train_embeddings(niter=niter, bs=bs, **combo)
+
+
 def all_combinations():
+    zinb_loss_data = 'PEA_STA sc_GEM'.split()
+
     for data in ALL_DATA:
         loss_list = ALL_LOSS.copy()
-        if data in 'PEA_STA sc_GEM'.split():
+        if data in zinb_loss_data:
             loss_list.append('zinb')
         else:
             loss_list.append('gauss')
@@ -61,6 +80,4 @@ def all_combinations():
 
 
 if __name__ == '__main__':
-    train_embeddings(
-        data='PEA_STA', loss='bce',
-    )
+    train_all(dry_run=True)

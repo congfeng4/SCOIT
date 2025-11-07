@@ -70,7 +70,6 @@ class HyperGraphCreator:
         self.fast_edge = fast_edge
         self.pickle = pickle
         self.read_csv_args = read_csv_args.copy()
-        self.normalize_stats = []
 
         # Initialize variables to be populated during processing
         self.multi_omics_df = None
@@ -249,7 +248,6 @@ class HyperGraphCreator:
             'omics_dims': [len(df.columns) for df in self.multi_omics_df.values()],
             'raw_data': {k: str(v) for k, v in self.multi_omics_data.items()},
             'cell_key': self.cell_key,
-            'normalize_stats': self.normalize_stats,
         }
 
         # Save metadata
@@ -362,7 +360,7 @@ class HyperGraph:
     @property
     def num_genes(self):
         return self.metadata['num_genes']
-        
+
     def __str__(self):
         return f'HyperGraph(num_nodes={self.num_nodes}, num_edges={self.num_edges})'
 
@@ -445,11 +443,12 @@ def load_graph_metadata(dir_path: Path):
     return df
 
 
-def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Path, normalization=False):
+def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Path, normalization=True):
     assert 0 <= train_size <=1, train_size
 
     edges = hg.edges
     metadata = hg.metadata
+    metadata.update(normalization=normalization, train_size=train_size)
 
     df = pd.DataFrame({
         'Cell': edges['Cell'] - metadata['cell_offset'],
@@ -483,6 +482,7 @@ def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Pa
         scaler = MinMaxScaler()
         train_weight = scaler.fit_transform(train_weight.reshape(-1, 1)).reshape(-1)
         test_weight = scaler.transform(test_weight.reshape(-1, 1)).reshape(-1)
+        metadata.update(weight_min=scaler.data_min_[0], weight_max=scaler.data_max_[0])
         print('Normalized, min_val', scaler.data_min_, 'max_val', scaler.data_max_)
 
     print('train_data', train_data.shape, 'train_weight', train_weight.shape,
@@ -495,6 +495,13 @@ def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Pa
     # assert check_hypergraph_isolated_nodes(test_data, nums_type)
     np.savez(save_dir / 'test_data.npz', test_data=test_data, test_weight=test_weight,
              nums_type=nums_type)
+
+    # Update metadata
+    metadata_file = save_dir / 'metadata.json'
+    with open(metadata_file, 'w') as f:
+        json.dump(metadata, f, indent=4)
+    print(f'Update metadata: {metadata}')
+
     print('Save to', save_dir)
 
 

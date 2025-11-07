@@ -1,6 +1,6 @@
-dataname=PEA_STA
+dataname=SCoPE2
 feature=adj
-epochs=300
+epochs=50
 loss=bce
 bs=96
 subdir="hgnn/${dataname}-${feature}-${loss}"
@@ -13,9 +13,8 @@ conda activate py39
 
 python ./hgnn/main_torch_zinb.py --data ${dataname} --feature ${feature} --iter ${epochs} --batch_size=${bs} --loss ${loss}
 
-echo ${dataname} ends
+echo ${subdir} ends
 
 mv *.npy ./embeddings/${subdir}
 
-echo Move embeddings to dir.
-
+echo Move embeddings to dir ${subdir}.
