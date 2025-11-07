@@ -1,9 +1,9 @@
-dataname=sc_GEM
-feature=walk
+dataname=PEA_STA
+feature=adj
 epochs=300
 loss=bce
 bs=96
-subdir="hgnn/${dataname}-${loss}"
+subdir="hgnn/${dataname}-${feature}-${loss}"
 
 mkdir -p ./embeddings/${subdir}
 
