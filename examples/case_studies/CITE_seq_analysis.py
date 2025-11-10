@@ -13,26 +13,26 @@ def load_data():
 
     protein_data = np.array(pd.read_csv("data/CITE_seq/protein_data.csv", index_col=0))
     cell_stage = np.array(pd.read_csv("data/CITE_seq/cell_type.csv", header=None))[0]
-    labels = []
-    for each in cell_stage:
-        if each == "Unclassified":
-            labels.append(0)
-        elif each == "B_cell":
-            labels.append(1)
-        elif each == "CD4_T_cell":
-            labels.append(2)
-        elif each == "CD8_T_cell":
-            labels.append(3)
-        elif each == "NK":
-            labels.append(4)
-        elif each == "Monocytes":
-            labels.append(5)
-        elif each == "DC":
-            labels.append(6)
-        elif each == "HSC":
-            labels.append(7)
+    # labels = []
+    # for each in cell_stage:
+    #     if each == "Unclassified":
+    #         labels.append(0)
+    #     elif each == "B_cell":
+    #         labels.append(1)
+    #     elif each == "CD4_T_cell":
+    #         labels.append(2)
+    #     elif each == "CD8_T_cell":
+    #         labels.append(3)
+    #     elif each == "NK":
+    #         labels.append(4)
+    #     elif each == "Monocytes":
+    #         labels.append(5)
+    #     elif each == "DC":
+    #         labels.append(6)
+    #     elif each == "HSC":
+    #         labels.append(7)
 
-    return expression_data, protein_data, labels
+    return expression_data, protein_data, cell_stage #labels
 
 
 if __name__ == "__main__":

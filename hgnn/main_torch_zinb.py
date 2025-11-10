@@ -285,7 +285,7 @@ def train_epoch(args, model, loss_func, training_data, optimizer, batch_size, on
                             (bce_total_loss / (i + 1), skipgram_total_loss / (i + 1), recon_total_loss / (i + 1)))
         bce_total_loss += loss_bce.item()
         skipgram_total_loss += loss_skipgram.item()
-        #recon_total_loss += loss_recon.item()
+        recon_total_loss += loss_recon.item()
     y = torch.cat(y_list)
     w = torch.cat(w_list)
     pred = torch.cat(pred_list)
