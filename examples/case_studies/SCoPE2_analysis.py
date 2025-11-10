@@ -6,17 +6,17 @@ import time
 from scoit.cell_analysis import save_scoit_embeddings
 
 def load_data():
-    expression_data = pd.read_csv("data/SCoPE2/expression_data.csv", index_col=0)
-    protein_data = pd.read_csv("data/SCoPE2/protein_data.csv", index_col=0)
+    expression_data = np.array(pd.read_csv("data/SCoPE2/expression_data.csv", index_col=0))
+    protein_data = np.array(pd.read_csv("data/SCoPE2/protein_data.csv", index_col=0))
     cell_stage = np.array(pd.read_csv("data/SCoPE2/cell_stage.csv", header=None))[0]
-    labels = []
-    for each in cell_stage:
-        if each == "sc_m0":
-            labels.append(0)
-        elif each == "sc_u":
-            labels.append(1)
+    # labels = []
+    # for each in cell_stage:
+    #     if each == "sc_m0":
+    #         labels.append(0)
+    #     elif each == "sc_u":
+    #         labels.append(1)
 
-    return expression_data, protein_data, labels
+    return expression_data, protein_data, cell_stage #labels
 
 
 if __name__ == "__main__":

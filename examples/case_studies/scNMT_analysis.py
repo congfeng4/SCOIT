@@ -12,18 +12,18 @@ def load_data():
 
     cell_stage = np.array(pd.read_csv("data/scNMT/cell_stage.csv", header=None))
 
-    labels = []
-    for each in cell_stage:
-        if each == "E5.5":
-            labels.append(0)
-        if each == "E6.5":
-            labels.append(1)
-        if each == "E7.5":
-            labels.append(2)
-    labels = np.array(labels)
+    # labels = []
+    # for each in cell_stage:
+    #     if each == "E5.5":
+    #         labels.append(0)
+    #     if each == "E6.5":
+    #         labels.append(1)
+    #     if each == "E7.5":
+    #         labels.append(2)
+    # labels = np.array(labels)
 
 
-    return expression_data, promoter_methy_data, promoter_acc_data, labels
+    return expression_data, promoter_methy_data, promoter_acc_data, cell_stage #labels
 
 
 if __name__ == "__main__":
