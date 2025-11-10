@@ -20,15 +20,19 @@ def train_embeddings(data: str,
 
     os.system('rm -f ./*.npy')
 
-    subprocess.check_call([
-        sys.executable, './hgnn/main_torch_zinb.py',
-        '--data', data,
-        '-f', feature,
-        '--iter', str(niter),
-        '--loss', loss,
-        '--batch_size', str(bs),
-    ])
-    print('Train', subdir, 'ends')
+    try:
+        subprocess.check_call([
+            sys.executable, './hgnn/main_torch_zinb.py',
+            '--data', data,
+            '-f', feature,
+            '--iter', str(niter),
+            '--loss', loss,
+            '--batch_size', str(bs),
+        ])
+    except KeyboardInterrupt:
+        print('Training interrupted. Saving partial results...')
+    else:
+        print('Train', subdir, 'ends')
 
     config = dict(
         data=data,
@@ -44,8 +48,8 @@ def train_embeddings(data: str,
     print('Move embeddings to dir.')
 
 
-ALL_DATA = 'sci_CAR scNMT  SCoPE2  SNARE_seq_adult_mouse  SNARE_seq_neonatal_mouse CITE_seq'.split()
-# sc_GEM PEA_STA
+ALL_DATA = 'sc_GEM PEA_STA sci_CAR scNMT  SCoPE2  SNARE_seq_adult_mouse  SNARE_seq_neonatal_mouse CITE_seq'.split()
+#
 
 ALL_LOSS = 'bce mse'.split()
 
@@ -56,7 +60,7 @@ def train_all(dry_run=False):
         bs = 1024
     else:
         niter = 50
-        bs = 256
+        bs = 1024
 
     all_combs = list(all_combinations())
     pp(all_combs)
@@ -80,4 +84,7 @@ def all_combinations():
 
 
 if __name__ == '__main__':
-    train_all(dry_run=True)
+    # train_all(dry_run=False)
+    train_embeddings(data='SCoPE2',
+                      niter=100, feature='adj', loss='mse', bs=1024)
+

@@ -401,6 +401,9 @@ class Classifier(nn.Module):
             output = (dynamic - static) ** 2
         else:
             output = dynamic
+            
+        print('output', torch.any(torch.isnan(output)))
+        print('static', torch.any(torch.isnan(static)))
 
         output_proba = self.pff_classifier_proba(static)
         # output_proba = torch.sum(output_proba * non_pad_mask, dim=-2, keepdim=False)
@@ -410,19 +413,25 @@ class Classifier(nn.Module):
         output_proba = output_proba + distance_proba
 
         output_mean = self.pff_classifier(output)
+
         # output_mean = torch.sum(output_mean * non_pad_mask, dim=-2, keepdim=False)
         # output_mean /= mask_sum
         output_mean = torch.mean(output_mean, dim=-2, keepdim=False)
 
         output_var = self.pff_classifier_var(static)
+
         # output_var = torch.sum(output_var * non_pad_mask, dim=-2, keepdim=False)
         # output_var /= mask_sum
         output_var = torch.mean(output_var, dim=-2, keepdim=False)
+
+
         output_mean = output_mean + distance_proba2
         output_var = output_var + distance_proba3
 
-        return output_mean, output_var, output_proba
+        if return_recon:
+            return output_mean, output_var, output_proba, recon_loss
 
+        return output_mean, output_var, output_proba
 
 # A custom position-wise MLP.
 # dims is a list, it would create multiple layer with tanh between them

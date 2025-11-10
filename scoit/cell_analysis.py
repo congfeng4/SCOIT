@@ -175,6 +175,7 @@ def umap_visualize(features, cell_stage=None, method='UMAP', palette=None, s=40,
 
     plt.tight_layout()
 
-    from scoit.cell_analysis import cluster_evaluate
+    if cell_stage is not None:
+        from scoit.cell_analysis import cluster_evaluate
 
-    return cluster_evaluate(features, cell_stage, use_umap=eval_use_umap)
+        return cluster_evaluate(features, cell_stage, use_umap=eval_use_umap)

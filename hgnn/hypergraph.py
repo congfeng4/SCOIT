@@ -97,7 +97,7 @@ class HyperGraphCreator:
 
         begin = time.time()
         self.multi_omics_df = {
-            name: pd.read_csv(path, **self.read_csv_args).sort_index()
+            name: pd.read_csv(path, **self.read_csv_args)#.sort_index()
             for name, path in self.multi_omics_data.items()
         }
         print('Load data done, time:', time.time() - begin)

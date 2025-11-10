@@ -78,7 +78,7 @@ def parse_args():
         '-f',
         '--feature',
         type=str,
-        default='walk',
+        default='adj',
         choices=('walk', 'adj'),
         help='Features used in the first step')
 
@@ -133,6 +133,7 @@ def train_batch_hyperedge(model, loss_func, batch_data, batch_weight, type, y=""
 
     # forward
     pred, recon_loss = model(x, return_recon=True)
+    print('recon_loss', recon_loss.item())
     loss = loss_func(pred, y, weight=w)
     return pred, y, loss, recon_loss
 

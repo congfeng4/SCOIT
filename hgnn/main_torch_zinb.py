@@ -83,7 +83,7 @@ def parse_args():
         '-f',
         '--feature',
         type=str,
-        default='walk',
+        default='adj',
         choices=('walk', 'adj'),
         help='Features used in the first step')
 
@@ -98,6 +98,7 @@ def parse_args():
         '-m',
         '--loss',
         type=str,
+        default='bce',
         choices=('bce', 'mse', 'zinb', 'rank', 'gauss', 'nb'),
         help='Loss type',
     )
@@ -139,7 +140,9 @@ def train_batch_hyperedge(model, loss_func, batch_data, batch_weight, type, y=""
         x, y, w = x[index], y[index], w[index]
 
     # forward
-    pred, pred_var, pred_proba = model(x, return_recon=False, )
+    pred, pred_var, pred_proba, recon_loss = model(x, return_recon=True)
+    # print('pred', pred[:10], 'pred_var', pred_var[:10], 'pred_proba', pred_proba[:10])
+
     if args.loss == 'bce':
         main_loss = F.binary_cross_entropy_with_logits(pred, y, weight=w)
     elif args.loss == 'rank':
@@ -165,6 +168,7 @@ def train_batch_hyperedge(model, loss_func, batch_data, batch_weight, type, y=""
         pred = pred.float().view(-1)
         w = w.float().view(-1)
         main_loss = F.mse_loss(pred, w)
+        # print('pred', pred[:10], 'w', w[:10], 'main_loss', main_loss.item())
     elif args.loss == 'nb':
         pred = F.softplus(pred)
         pred_var = F.softplus(pred_var)
@@ -175,7 +179,8 @@ def train_batch_hyperedge(model, loss_func, batch_data, batch_weight, type, y=""
         print("wrong mode", args.loss)
         raise ValueError(args.loss)
 
-    return pred, y, w, main_loss, #recon_loss
+    # print('main_loss', main_loss.item(), 'recon_loss', recon_loss.item())
+    return pred, y, w, main_loss, recon_loss
 
 
 def train_batch_skipgram(model, loss_func, alpha, batch_data):
@@ -257,10 +262,10 @@ def train_epoch(args, model, loss_func, training_data, optimizer, batch_size, on
                 if len(batch_y) == 0:
                     continue
 
-            pred, batch_y, batch_w, loss_bce = train_batch_hyperedge(model_1, loss_1, batch_edge, batch_edge_weight,
+            pred, batch_y, batch_w, loss_bce, loss_recon = train_batch_hyperedge(model_1, loss_1, batch_edge, batch_edge_weight,
                                                                         type, y=batch_y)
             loss_skipgram = torch.Tensor([0.0]).to(device)
-            loss = beta * loss_bce + alpha * loss_skipgram #+ loss_recon * args.rw
+            loss = beta * loss_bce + alpha * loss_skipgram + loss_recon * args.rw
             acc_list.append(accuracy(pred, batch_y))
             y_list.append(batch_y)
             w_list.append(batch_w)
@@ -327,11 +332,11 @@ def eval_epoch(args, model, loss_func, validation_data, batch_size, type):
             index = torch.randperm(len(batch_x))
             batch_x, batch_y, batch_w = batch_x[index], batch_y[index], batch_w[index]
 
-            pred_batch, *_, loss = train_batch_hyperedge(model, loss_func, batch_x, batch_w, type, batch_y)
+            pred_batch, *_, loss, recon_loss = train_batch_hyperedge(model, loss_func, batch_x, batch_w, type, batch_y)
             pred.append(pred_batch)
             # label.append(batch_y)
             w_list.append(batch_w)
-            # recon_total_loss += recon_loss.item()
+            recon_total_loss += recon_loss.item()
             bce_total_loss += loss.item()
 
         pred = torch.cat(pred, dim=0)
@@ -361,7 +366,7 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
 
         tb_logger.add_scalars('Training', dict(bce_loss=bce_loss,
                                               # skipgram_loss=skipgram_loss,
-                                            #    recon_loss=recon_loss,
+                                               recon_loss=recon_loss,
                                                accu=train_accu, **{str1: auc1, str2: auc2},
                                                ), global_step=epoch_i)
 
@@ -389,7 +394,7 @@ def train(args, model, loss, training_data, validation_data, optimizer, epochs, 
                                                                                     'hyper')
         tb_logger.add_scalars("Validation-hyper", dict(
             bce_loss=valid_bce_loss,
-            # recon_loss=recon_loss,
+            recon_loss=recon_loss,
             **{str1: valid_auc1, str2: valid_auc2}
         ), global_step=epoch_i)
 
