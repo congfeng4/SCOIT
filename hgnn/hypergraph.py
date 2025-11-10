@@ -46,7 +46,7 @@ class HyperGraphCreator:
     """
 
     def __init__(self, multi_omics_data: dict[str, Path], cell_key: str, dataname: str,
-                 prefix: Path, filter_edge=False, fast_edge=True, pickle=False,
+                 prefix: Path, filter_edge=False, fast_edge=True, pickle=False, remove_zeros=True,
                  read_csv_args=None):
         """
         Initialize the HyperGraphCreator with processing parameters.
@@ -82,6 +82,7 @@ class HyperGraphCreator:
         self.gene_offset = 0
         self.cell_offset = 0
         self.savedir = self.prefix / dataname
+        self.remove_zeros = remove_zeros
 
     def get_omics_id_from_gene(self, gene_name: str) -> int:
         """Get the omics identifier from a gene name."""
@@ -107,16 +108,17 @@ class HyperGraphCreator:
             name: df.rename({col: f"{str(col).strip()}_{name}" for col in df.columns}, axis=1)
             for name, df in self.multi_omics_df.items()
         }
-        print('Rename columns')
-        for name, df in self.multi_omics_df.items():
-            print(f'Name: {name}, Columns: {df.columns}')
 
         # Join dataframes by cell key
         print('Union features from multi-omics')
         self.df = pd.concat(list(self.multi_omics_df.values()), axis=1)
+        print('Columns', len(self.df.columns), 'Cells', len(self.df))
 
+        if self.remove_zeros:
+            self.df[self.df == 0] = np.nan
         # Remove all-NaN columns
         self.df.dropna(axis=1, how='all', inplace=True)
+        print('Columns after clean', len(self.df.columns), 'Cells', len(self.df))
 
         # Set counts and offsets
         self.num_cells = len(self.df)
