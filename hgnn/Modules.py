@@ -98,8 +98,11 @@ class TiedAutoEncoder(nn.Module):
             torch.nn.init.uniform_(self.bias2, -bound, bound)
 
     def forward(self, input):
+        # print('self.weight', torch.isnan(self.weight).any(), 'self.bias1', torch.isnan(self.bias1).any())
         encoded_feats = F.linear(input, self.weight, self.bias1)
+        # print('input', torch.isnan(input).any(), 'encoded_feats after linear', torch.isnan(encoded_feats).any())
         encoded_feats = F.tanh(encoded_feats)
+        # print('encoded_feats after tanh()', torch.isnan(encoded_feats).any())
         reconstructed_output = F.linear(encoded_feats, self.weight.t(), self.bias2)
         return encoded_feats, reconstructed_output
 
@@ -153,9 +156,14 @@ class MultipleEmbedding(nn.Module):
                 continue
             adj = self.embeddings[i](x[select] - self.num_list[i] - 1)
             output = self.dropout(adj)
+            # print('output after dropout', torch.isnan(output).any(),
+                #    'adj', torch.isnan(adj).any(), 'i', i)
             output, recon = self.wstack[i](output)
+            # print('output after wstack', torch.isnan(output).any())
+
             output = self.norm_stack[i](output)
             final[select] = output
+
             recon_loss += sparse_autoencoder_error(recon, adj)
 
         return final, recon_loss

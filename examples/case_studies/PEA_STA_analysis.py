@@ -7,20 +7,20 @@ import time
 
 
 def load_data():
-    expression_data = pd.read_csv("data/PEA_STA/expression_data.csv", index_col=0)
-    protein_data = pd.read_csv("data/PEA_STA/protein_data.csv", index_col=0)
+    expression_data = np.array(pd.read_csv("data/PEA_STA/expression_data.csv", index_col=0))
+    protein_data = np.array(pd.read_csv("data/PEA_STA/protein_data.csv", index_col=0))
     cell_stage = np.array(pd.read_csv("data/PEA_STA/cell_stage.csv", header=None))[0]
     labels = []
     for each in cell_stage:
         day = each.split("_")[1]
         treat = each.split("_")[2]
         if day == "0h":
-            labels.append(0)
+            labels.append(day)
         elif day == "6d":
             if treat == "contol":
-                labels.append(1)
+                labels.append(day)
             elif treat == "BMP4":
-                labels.append(2)
+                labels.append(treat)
 
     return expression_data, protein_data, labels
 

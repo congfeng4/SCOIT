@@ -133,7 +133,7 @@ def train_batch_hyperedge(model, loss_func, batch_data, batch_weight, type, y=""
 
     # forward
     pred, recon_loss = model(x, return_recon=True)
-    print('recon_loss', recon_loss.item())
+    # print('recon_loss', recon_loss.item(), 'w', torch.isnan(w).any())
     loss = loss_func(pred, y, weight=w)
     return pred, y, loss, recon_loss
 
@@ -634,7 +634,7 @@ if __name__ == '__main__':
         def csr_has_nan(x):
             return np.isnan(x.data).any()
 
-        # print('embeddings_initial', [x.shape for x in embeddings_initial])
+        print('embeddings_initial', [csr_has_nan(x) for x in embeddings_initial])
 
     # print(train_weight)
     print(train_weight, np.min(train_weight), np.max(train_weight))

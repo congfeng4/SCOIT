@@ -401,9 +401,6 @@ class Classifier(nn.Module):
             output = (dynamic - static) ** 2
         else:
             output = dynamic
-            
-        print('output', torch.any(torch.isnan(output)))
-        print('static', torch.any(torch.isnan(static)))
 
         output_proba = self.pff_classifier_proba(static)
         # output_proba = torch.sum(output_proba * non_pad_mask, dim=-2, keepdim=False)
