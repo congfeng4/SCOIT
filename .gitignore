@@ -18,3 +18,4 @@ logs
 /data*
 *.npz
 tb_logs
+.ipynb_checkpoints

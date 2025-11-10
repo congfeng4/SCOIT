@@ -7,6 +7,7 @@ import json
 from collections import Counter, defaultdict
 from typing import Union
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
 
 
 def robust_zscore(x):
@@ -32,6 +33,41 @@ def minmax_normalize(df: pd.DataFrame):
     # keep the order: index → columns → values
     normed = scaler.fit_transform(df.values)
     return pd.DataFrame(normed, index=df.index, columns=df.columns)
+
+
+def save_edges_and_weights(save_dir, edges, weights, train_size, normalization):
+    # Normalize 会让本来没有0的数据集产生零，即本来的最小值会变成0
+    save_dir = Path(save_dir)
+    nums_type = edges.max(0) + 1
+
+    weights = weights.reshape(-1, 1)
+
+    if normalization:
+        scaler = MinMaxScaler()
+        weights = scaler.fit_transform(weights)
+        print('Normalize', scaler)
+
+    train_data, test_data, train_weight, test_weight = train_test_split(edges, weights, train_size=train_size)
+    train_weight = train_weight.reshape(-1)
+    test_weight = test_weight.reshape(-1)
+
+    np.savez(save_dir / 'train_data.npz', train_data=train_data, train_weight=train_weight,
+             nums_type=nums_type)
+    np.savez(save_dir / 'test_data.npz', test_data=test_data, test_weight=test_weight,
+             nums_type=nums_type)
+
+
+def save_metadata(save_dir, edges, train_size, nums_type, normalization):
+    metadata = dict(
+        train_size=train_size,
+        normalization=normalization,
+        num_edges=edges.shape[0],
+        num_nodes=sum(nums_type),
+        num_cells=nums_type[0],
+        num_genes=nums_type[1],
+        num_omics=nums_type[2],
+    )
+    np.savez(save_dir / 'metadata', **metadata)
 
 
 class HyperGraphCreator:
@@ -475,8 +511,6 @@ def convert_to_hypersagnn_format(hg: HyperGraph, train_size: float, save_dir: Pa
         assert check_hypergraph_isolated_nodes(edges_data, nums_type)
         print('Save to', save_dir)
         return
-
-    from sklearn.model_selection import train_test_split
 
     train_data, test_data, train_weight, test_weight = train_test_split(edges_data, edges_weight,
                                                                           train_size=train_size)

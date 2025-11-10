@@ -695,7 +695,7 @@ if __name__ == '__main__':
         def csr_has_nan(x):
             return np.isnan(x.data).any()
 
-        # print('embeddings_initial', [x.shape for x in embeddings_initial])
+        print('embeddings_initial', [csr_has_nan(x) for x in embeddings_initial])
 
     # print(train_weight)
     print(train_weight, np.min(train_weight), np.max(train_weight))

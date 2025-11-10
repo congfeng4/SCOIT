@@ -16,7 +16,7 @@ def load_data():
     #     elif each == "sc_u":
     #         labels.append(1)
 
-    return expression_data, protein_data, cell_stage #labels
+    return expression_data, protein_data, cell_stage[1:] #labels
 
 
 if __name__ == "__main__":
