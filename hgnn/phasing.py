@@ -102,7 +102,7 @@ def train_phasing_model(*,embed_dim: int, omics_offset: int,
             lap0_batch = build_laplacian(x0_batch.cpu().numpy(), k=k).to(C.device)
             loss_regular0 = torch.trace(xp0.T @ lap0_batch @ xp0) + torch.trace(xm0.T @ lap0_batch @ xm0)
             lap1_batch = build_laplacian(x1_batch.cpu().numpy(), k=k).to(C.device)
-            loss_regular1 = torch.trace(xp1.T @ lap0_batch @ xp1) + torch.trace(xm1.T @ lap0_batch @ xm1)
+            loss_regular1 = torch.trace(xp1.T @ lap1_batch @ xp1) + torch.trace(xm1.T @ lap1_batch @ xm1)
             loss_reg = loss_regular0 + loss_regular1
 
             loss = loss_recon + alpha * loss_reg
