@@ -141,7 +141,6 @@ def train_batch_hyperedge(model, loss_func, batch_data, batch_weight, type, y=""
 
     # forward
     pred, pred_var, pred_proba, recon_loss = model(x, return_recon=True)
-    # print('pred', pred[:10], 'pred_var', pred_var[:10], 'pred_proba', pred_proba[:10])
 
     if args.loss == 'bce':
         main_loss = F.binary_cross_entropy_with_logits(pred, y, weight=w)
@@ -168,7 +167,6 @@ def train_batch_hyperedge(model, loss_func, batch_data, batch_weight, type, y=""
         pred = pred.float().view(-1)
         w = w.float().view(-1)
         main_loss = F.mse_loss(pred, w)
-        # print('pred', pred[:10], 'w', w[:10], 'main_loss', main_loss.item())
     elif args.loss == 'nb':
         pred = F.softplus(pred)
         pred_var = F.softplus(pred_var)
