@@ -51,7 +51,7 @@ def save_edges_and_weights(save_dir, edges, weights, train_size, normalization):
     train_weight = train_weight.reshape(-1)
     test_weight = test_weight.reshape(-1)
 
-    np.savez(save_dir / 'train_data.npz', train_data=train_data, train_weight=train_weight,
+    np.savez(save_dir / 'train_data.npz', train_data=edges, train_weight=weights.reshape(-1),
              nums_type=nums_type)
     np.savez(save_dir / 'test_data.npz', test_data=test_data, test_weight=test_weight,
              nums_type=nums_type)
