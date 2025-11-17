@@ -28,7 +28,7 @@ import multiprocessing
 
 cpu_num = multiprocessing.cpu_count()
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = get_available_device()
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.deterministic = False
 
@@ -527,7 +527,7 @@ def generate_negative(x, dict1, get_type='all', weight="", forward=True):
     if not forward:
         device = 'cpu'
     else:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = get_available_device()
 
     new_weight = torch.tensor(weight[new_index]).to(device)
 
@@ -838,7 +838,7 @@ if __name__ == '__main__':
     loss = F.binary_cross_entropy
     loss2 = torch.nn.BCEWithLogitsLoss(reduction='sum')
 
-    summary(classifier_model, (3,))
+    # summary(classifier_model, (3,))
 
     sentences = Word2Vec_Skipgram_Data_Empty()
 

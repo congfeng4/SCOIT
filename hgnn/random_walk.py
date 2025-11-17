@@ -6,8 +6,9 @@ import random
 from tqdm import tqdm
 import torch
 from concurrent.futures import as_completed, ProcessPoolExecutor
+from hgnn.utils import get_available_device
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = get_available_device()
 device_ids = [0, 1]
 
 

@@ -5,8 +5,9 @@ import numpy as np
 from tqdm import tqdm, trange
 import copy
 import math
+from .utils import get_available_device
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = get_available_device()
 device_ids = [0, 1]
 
 

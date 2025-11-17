@@ -23,7 +23,7 @@ import multiprocessing
 
 cpu_num = multiprocessing.cpu_count()
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = get_available_device()
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.deterministic = False
 
@@ -478,7 +478,7 @@ def generate_negative(x, dict1, get_type='all', weight="", forward=True):
     if not forward:
         device = 'cpu'
     else:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = get_available_device()
 
     new_weight = torch.tensor(weight[new_index]).to(device)
 

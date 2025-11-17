@@ -137,7 +137,7 @@ class UnionCom(object):
 
         time1 = time.time()
         init_random_seed(self.manual_seed)
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = get_available_device()
         dataset_num = len(dataset)
         for i in range(dataset_num):
             self.row.append(np.shape(dataset[i])[0])
