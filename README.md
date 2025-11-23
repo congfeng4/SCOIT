@@ -29,7 +29,7 @@ Key features:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/HGNN.git
+git clone https://github.com/congfeng4/HGNN.git
 cd HGNN
 
 # Create and activate conda environment (optional but recommended)
