@@ -1,143 +1,113 @@
-# SCOIT
-SCOIT is an implementation of a probabilistic tensor decomposition framework for single-cell multiomic data integration. SCOIT accepts the input of datasets from multiple omics, with missing values allowed.
+# HGNN: Hypergraph Neural Network for Graph Representation Learning
 
-![image](https://github.com/deepomicslab/SCOIT/blob/main/framework.png)
+A hypergraph neural network framework based on hypergraphs for learning node representations and performing graph-based tasks. This repository provides implementations of hypergraph neural networks with a focus on adjacency matrix (adj) features for graph learning tasks.
 
-# Getting started
+## Overview
 
-## Prerequisite
-+ numpy
-+ scipy 1.6.0
-+ sklearn
-+ communities
-+ igraph
-+ leidenalg
-+ pytorch 1.9.0
+HGNN (Hypergraph Neural Network) is designed to handle hypergraph structures where edges (hyperedges) can connect multiple nodes simultaneously. This framework extends traditional graph neural networks by capturing complex relationships between nodes in complex systems, with a specific emphasis on using adjacency matrix features.
 
-## Install
-```
-pip install SCOIT
-```
+Key features:
+- Hypergraph representation and processing
+- Focus on adjacency matrix (adj) features for learning
+- Support for various loss functions (BCE, MSE, ZINB, etc.)
+- GPU acceleration with PyTorch
 
-## Examples
-We put the complete scripts for the analysis described in the manuscript under ```examples/``` directory for detailed usage examples and reproduction. The example data can be downloaded from [Zenodo](https://zenodo.org/records/7886413).
+## Installation
 
-This is an example of multiple datasets when features have corresponding information.
+### Prerequisites
 
-```Python
-from scoit import sc_multi_omics
+- numpy
+- scipy 1.6.0
+- sklearn
+- communities
+- igraph
+- leidenalg
+- pytorch 1.9.0
+- Additional dependencies listed in `requirements.txt`
 
-data = np.array([expression_data, methylation_data])
-sc_model = sc_multi_omics()
-predict_data = sc_model.fit(data) # the imputed data
-np.savetxt("global_cell_embeddings.csv", sc_model.C, delimiter = ',') # global cell embeddings
-np.savetxt("global_gene_embeddings.csv", sc_model.G, delimiter = ',') # global gene embeddings
-np.savetxt("local_cell_embeddings.csv", sc_model.C, delimiter = ',') # omics-specific cell embeddings
-np.savetxt("local_gene_embeddings.csv", sc_model.G, delimiter = ',') # omics-specific gene embeddings
+### Install from Source
 
-# imputation
-imputed_expression_data = predict_data[0]
-imputed_methylation_data = predict_data[1]
+```bash
+# Clone the repository
+git clone https://github.com/your-username/HGNN.git
+cd HGNN
 
-```
-When the features of different omics do not have corresponding information, please use the ```fit_list``` function, which accepts the input as a list of matrices.
-```Python
-from scoit import sc_multi_omics
+# Create and activate conda environment (optional but recommended)
+conda env create -f env-py39.yaml
+conda activate py39
 
-data = [expression_data, protein_data]
-sc_model = sc_multi_omics()
-predict_data = sc_model.fit_list(data)
-```
-If the input does not contain missing values ("NA"), we provide ```fit_complete``` and ```fit_list_complete``` functions to accelerate the optimization since they take advantage of matrix operations.
-```Python
-from scoit import sc_multi_omics
-
-data = np.array([expression_data, methylation_data])
-sc_model = sc_multi_omics()
-predict_data = sc_model.fit_complete(data) # the imputed data
-```
-```Python
-from scoit import sc_multi_omics
-
-data = [expression_data, protein_data]
-sc_model = sc_multi_omics()
-predict_data = sc_model.fit_list_complete(data)
+# Install package
+pip install .
 ```
 
-## Parameters
-###  ```sc_multi_omics```
-> + ```K1```: The local element-wise product parameter, see the manuscript for details (default=30).
-> + ```K2```: The local element-wise product parameter (default=30).
-> + ```K3```: The local element-wise product parameter (default=30).
-> + ```random_seed```: The random seed used in optimization (default=123).
+### Alternative Installation
 
-###  ```fit```
-> + ```normalization```: Whether to applied min-max normalization (default=True).
-> + ```pre_impute```: Whether to applied KNNImputer for pre-processing (default=False).
-> + ```opt```: The optimization algorithm for gradient descent, including SGD, Adam, Adadelta, Adagrad, AdamW, SparseAdam, Adamax, ASGD, LBFGS (default="Adam").
-> + ```dist```:The distribution used for modeling, including gaussian, poisson, negative_bionomial (default="gaussian").
-> + ```lr```: The learning rate for gradient descent (default=1e-2).
-> + ```n_epochs```: The number of optimization epochs (default=1000).
-> + ```lambda_C_regularizer```: The coefficient for the penalty term of global cell embeddings (default=0, indicating automatically adjust.).
-> + ```lambda_G_regularizer```: The coefficient for the penalty term of global gene embeddings (default=0).
-> + ```lambda_O_regularizer```: The coefficient list for the penalty term of global omics embeddings; the length of the list should be the same with the number of omics (default=[0, 0]).
-> + ```lambda_OC_regularizer```: The coefficient list for the penalty term of omics-specific cell embeddings; the length of the list should be the same with the number of omics, not avaiable for complete functions (default=[0, 0]).
-> + ```lambda_OG_regularizer```: The coefficient list for the penalty term of omics-specific gene embeddings, the length of the list should be the same with the number of omics, not avaiable for list functions (default=[0, 0]).
-> + ```batch_size```: The batch size used for gradient descent, not avaiable for complete functions (default=256).
-> + ```device```: CPU or GPU (default='cuda' if torch.cuda.is_available() else 'cpu').
-> + ```verbose```: Whether to print loss for each epoch (default=True).
-
-###  ```cell_analysis```
-#### ```knn_adj_matrix```
-Construct KNN graph with the cell embeddings.
-> + ```k```: The number of neighbos used to construct KNN graph (default=20).
-#### ```snn_adj_matrix```
-Construct SNN graph with the cell embeddings.
-> + ```k```: The number of neighbos used to construct SNN graph (default=20).
-#### ```jsnn_adj_matrix```
-Construct jSNN graph with the cell embeddings.
-> + ```k```: The number of neighbos used to construct jaccard SNN graph (default=20).
-> + ```prune```: Set the score below the value to zero (default=1/15).
-#### ```RunLouvain```
-Run Louvain algorithm for the graph.
-> + ```k```: Terminate the search once this number of communities is detected (default=None).
-#### ```RunSpectral```
-Run Spectral clustering algorithm for the graph.
-> + ```k```: Number of clusters (default=5).
-#### ```RunLeiden```
-Run Leiden algorithm for the graph.
-
-###  ```gene_analysis```
-#### ```pearson_correlation```
-Calculate the correlation between the features.
-#### ```feature_projection```
-Project the feature embedding to cell embeddings and visualize with UMAP.
-> + ```umap_epochs```: The number of UMAP epochs for visualization (default=100).
-> + ```dimension```: The dimension of the embeddings to use (default=30).
-> + ```figure_name```: The saved figure name (default="feature_projections.png").
-
-
-### Version history
-+ `v0.1.2.1`: Manuscript version.
-+ `v0.1.2`: Adjust correlation calculation.
-+ `v0.1.1`: Automatically adjusts the coefficients; Add downstream analyses; Extend to unpaired data.
-+ `v0.0.1`: Initial version.
-
-### Maintainer
-WANG Ruohan ruohawang2-c@my.cityu.edu.hk
-
-### Reference
+```bash
+pip install -r requirements.txt
 ```
-@article{10.1093/nar/gkad570,
-    author = {Wang, Ruo Han and Wang, Jianping and Li, Shuai Cheng},
-    title = "{Probabilistic tensor decomposition extracts better latent embeddings from single-cell multiomic data}",
-    journal = {Nucleic Acids Research},
-    pages = {gkad570},
-    year = {2023},
-    month = {07},
-    issn = {0305-1048},
-    doi = {10.1093/nar/gkad570},
-    url = {https://doi.org/10.1093/nar/gkad570},
-    eprint = {https://academic.oup.com/nar/advance-article-pdf/doi/10.1093/nar/gkad570/50819911/gkad570.pdf},
-}
+
+## Getting Started
+
+### Example Notebooks
+
+The repository provides Jupyter Notebook examples for quick start and detailed usage:
+
+- `hgnn_sc_GEM.ipynb`: Demonstrates the application of HGNN on sc_GEM datasets, including data loading, model training with adjacency features, and downstream analysis.
+- `hgnn_PEA_STA.ipynb`: Example of using HGNN for PEA-STA data processing, covering hypergraph construction from adjacency matrices and model evaluation.
+
+To run the notebooks:
+
+```bash
+conda activate py39
+jupyter notebook
 ```
+
+Then navigate to the desired notebook file and run the cells sequentially.
+
+### Running Experiments
+
+Use the provided script to run experiments with adjacency features:
+
+```bash
+conda activate py39
+python train.py --feature adj --random-walk False
+```
+
+### Command Line Arguments
+
+Key arguments for customization (with adj feature focus):
+
+- `--data`: Dataset name (default: 'drug')
+- `--dimensions`: Number of embedding dimensions (default: 64)
+- `--feature`: Features used (set to 'adj' for adjacency matrix, default: 'adj')
+- `--random-walk`: Disable random walk (set to False, default: False)
+- `--loss`: Loss function type (choices: 'bce', 'mse', 'zinb', 'rank', 'gauss', 'nb')
+- `--batch_size`: Training batch size (default: 96)
+- `--rw`: Weight of adjacency matrix reconstruction loss (default: 0.01)
+
+For full list of arguments, run:
+```bash
+python train.py --help
+```
+
+## Model Architecture
+
+The HGNN model focuses on hyperedge prediction using adjacency matrix features, with the following key components:
+1. Hyperedge prediction model leveraging adjacency features
+2. Support for multiple loss functions to optimize hypergraph structure reconstruction
+
+## Evaluation Metrics
+
+The framework supports various evaluation metrics:
+- Accuracy
+- ROC-AUC
+- Average Precision
+- Pearson/Spearman correlation coefficients
+
+## Acknowledgments
+
+This project is based on the SCOIT project. We sincerely thank the SCOIT development team for their foundational work that enabled this implementation.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
